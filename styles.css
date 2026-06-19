@@ -1,0 +1,153 @@
+/* =========================================================================
+   styles.css — "tactical analyst" dark theme. RTL-first (works LTR too).
+   ========================================================================= */
+
+:root {
+  --bg: #0a121b;
+  --panel: #10202e;
+  --panel-2: #16293a;
+  --line: #24405a;
+  --text: #e7eef5;
+  --muted: #8aa2b6;
+  --accent: #2f80ed;
+  --accent-2: #ffd24a;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, "Segoe UI", Tahoma, Arial, sans-serif;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* --- top bar --- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 18px;
+  background: linear-gradient(180deg, var(--panel) 0%, var(--bg) 100%);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.brand h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.brand .tag {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* --- HUD --- */
+.hud {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px 16px;
+}
+.hud-team { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.hud-team .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.hud-center { text-align: center; min-width: 92px; }
+.hud-center .score { font-size: 22px; font-weight: 800; line-height: 1; }
+.hud-center .clock { font-variant-numeric: tabular-nums; color: var(--accent-2); font-size: 13px; margin-top: 2px; }
+.hud-center .phase { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+/* --- stage / canvas --- */
+.stage {
+  flex: 1;
+  min-height: 0;
+  padding: 14px;
+  display: flex;
+}
+#pitch {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+  display: block;
+}
+
+/* --- dock / controls --- */
+.dock {
+  border-top: 1px solid var(--line);
+  background: linear-gradient(0deg, var(--panel) 0%, var(--bg) 100%);
+  padding: 10px 18px 14px;
+}
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 4px 8px;
+}
+.group .lbl { font-size: 12px; color: var(--muted); }
+.toggle { cursor: pointer; user-select: none; }
+
+.btn {
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  border-radius: 9px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.12s, border-color 0.12s, transform 0.05s;
+}
+.btn:hover { background: #1d3346; }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--accent); border-color: var(--accent); }
+.btn.primary:hover { background: #3b8bf0; }
+.btn.ghost { background: transparent; }
+.btn.speed { padding: 6px 10px; min-width: 38px; }
+.btn.speed.active { background: var(--accent); border-color: var(--accent); }
+
+.seed {
+  width: 78px;
+  background: #0b1722;
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hint {
+  margin: 10px 2px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .brand h1 { font-size: 16px; }
+  .hud { gap: 10px; padding: 5px 10px; }
+}
