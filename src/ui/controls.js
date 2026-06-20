@@ -41,6 +41,7 @@ export class Controls {
       <button class="btn accent" data-act="tactics"></button>
       <button class="btn accent" data-act="analytics"></button>
       <button class="btn accent" data-act="lab"></button>
+      <button class="btn accent" data-act="season"></button>
       <button class="btn ghost" data-act="lang"></button>`;
 
     const q = (s) => this.el.querySelector(s);
@@ -52,6 +53,7 @@ export class Controls {
     q('[data-act="tactics"]').addEventListener('click', () => this.h.onTactics());
     q('[data-act="analytics"]').addEventListener('click', () => this.h.onAnalytics());
     q('[data-act="lab"]').addEventListener('click', () => this.h.onLab());
+    q('[data-act="season"]').addEventListener('click', () => this.h.onSeason());
     q('[data-act="shape"]').addEventListener('change', (e) => this.h.onToggleShape(e.target.checked));
     q('[data-act="restart"]').addEventListener('click', () => this.h.onRestart());
     q('[data-act="apply"]').addEventListener('click', () => this.h.onSeed(this.$seed.value));
@@ -89,6 +91,7 @@ export class Controls {
     this.el.querySelector('[data-act="tactics"]').textContent = t('tactics', lang);
     this.el.querySelector('[data-act="analytics"]').textContent = t('analytics', lang);
     this.el.querySelector('[data-act="lab"]').textContent = t('lab', lang);
+    this.el.querySelector('[data-act="season"]').textContent = t('season', lang);
     this.el.querySelector('[data-lbl="shape"]').textContent = t('shape', lang);
     this.el.querySelector('[data-act="apply"]').textContent = t('apply', lang);
     this.el.querySelector('[data-act="lang"]').textContent = t('language', lang);

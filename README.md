@@ -9,7 +9,7 @@ heatmaps, shot maps).
 deployable as a **static site to GitHub Pages**. UI is **Arabic-first (RTL)** with
 bilingual English tactical terms.
 
-> Built **phase by phase** per the build spec. **Current status: Phase 7 complete** (core build done; Phase 8 season mode optional).
+> Built **phase by phase** per the build spec. **Current status: all 8 phases complete.**
 >
 > **Phase 2 — Football basics:** on-ball decisions (pass / dribble / shoot / clear),
 > zonal marking, interceptions & tackles, shots with keeper saves, **goals**, proper
@@ -56,6 +56,13 @@ bilingual English tactical terms.
 > spectrum of clubs). **Scenario / Challenge** mode (comeback, 10 men, hold a lead, break
 > a parked bus) with win conditions shown at full time. A **shape overlay** (toggle) draws
 > the formation lines so you can see the in/out-of-possession morph.
+>
+> **Phase 8 — Season / Career:** an 8-club **double round-robin** (14 matchdays) with a
+> live **league table** (P/W/D/L/GF/GA/GD/Pts). Play each of your fixtures live or
+> simulate the round (or the whole season) — all deterministic. Squads carry **fatigue**
+> (fixture congestion), **form** (rolling results) and slow **development** across games,
+> which nudge each club's effective strength. Simulated scorelines are compressed into a
+> believable league range.
 
 ---
 

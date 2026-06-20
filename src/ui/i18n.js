@@ -37,6 +37,22 @@ export const DICT = {
   bench: { ar: 'دكة البدلاء', en: 'Bench' },
   subsLeft: { ar: 'المتبقي', en: 'left' },
 
+  // Phase 8 — season / career
+  season: { ar: 'الموسم', en: 'Season' },
+  startSeason: { ar: 'ابدأ الموسم', en: 'Start season' },
+  matchday: { ar: 'الجولة', en: 'Matchday' },
+  playMatch: { ar: 'العب مباراتك', en: 'Play your match' },
+  simMatchday: { ar: 'حاكِ الجولة', en: 'Simulate round' },
+  autoSim: { ar: 'حاكِ حتى النهاية', en: 'Sim to end' },
+  newSeason: { ar: 'موسم جديد', en: 'New season' },
+  leagueTable: { ar: 'جدول الدوري', en: 'League table' },
+  recentResults: { ar: 'آخر النتائج', en: 'Latest results' },
+  formLbl: { ar: 'الأداء', en: 'Form' },
+  fatigueLbl: { ar: 'الإرهاق', en: 'Fatigue' },
+  seasonOver: { ar: 'انتهى الموسم — البطل', en: 'Season over — champion' },
+  vs: { ar: 'ضد', en: 'vs' },
+  nextFixture: { ar: 'مباراتك القادمة', en: 'Your next match' },
+
   // Phase 7 — modes, what-if, lab
   lab: { ar: 'المختبر (ماذا لو)', en: 'Lab (what-if)' },
   whatif: { ar: 'إعادة «ماذا لو» ببذرة ثابتة', en: 'Seeded what-if A/B' },

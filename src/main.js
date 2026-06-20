@@ -16,6 +16,8 @@ import { Panel } from './ui/panel.js';
 import { AnalyticsView } from './ui/analyticsView.js';
 import { Setup } from './ui/setup.js';
 import { LabView } from './ui/labView.js';
+import { SeasonView } from './ui/seasonView.js';
+import { Season } from './modes/season.js';
 import { CLUBS } from './tactics/clubs.js';
 import { SCENARIOS } from './modes/scenarios.js';
 import { t } from './ui/i18n.js';
@@ -23,6 +25,8 @@ import { t } from './ui/i18n.js';
 const state = {
   lang: 'ar', speed: 1, paused: false, seed: 42,
   setup: { homeClubId: null, awayClubId: 'atletico', difficulty: 'normal', adaptive: true, scenario: 'none' },
+  season: null,
+  seasonMatch: null,
 };
 
 let world;
@@ -76,6 +80,35 @@ const lab = new LabView(document.getElementById('lab'), {
   getSetup: () => state.setup,
   getSeed: () => state.seed,
 });
+const seasonView = new SeasonView(document.getElementById('season'), {
+  getSeason: () => state.season,
+  onStart: (clubId) => {
+    state.season = new Season({ userClubId: clubId, seed: state.seed, difficulty: state.setup.difficulty });
+  },
+  onPlay: () => startSeasonMatch(),
+  onSim: () => state.season && !state.season.isOver() && state.season.simulateMatchday(),
+  onAuto: () => state.season && state.season.simulateToEnd(),
+  onNew: () => {
+    state.season = null;
+  },
+});
+
+// Launch the user's next league fixture as a live match (carrying form/fatigue).
+function startSeasonMatch() {
+  const s = state.season;
+  if (!s || s.isOver()) return;
+  const fx = s.userFixture();
+  const seed = s.matchSeed(s.currentRound().indexOf(fx));
+  state.seed = seed;
+  rng = makeRng(seed);
+  world = new World({ seed, ...s.matchOpts(fx.home, fx.away) });
+  stepper = new FixedStepper((dt) => step(world, rng, dt));
+  state.seasonMatch = fx;
+  ftShown = false;
+  state.paused = false;
+  controls.setPlaying(true);
+  seasonView.toggle(false);
+}
 const setup = new Setup(document.getElementById('setup'), {
   onApply: (vals) => {
     state.setup = vals;
@@ -94,6 +127,7 @@ const controls = new Controls(document.getElementById('controls'), {
   onTactics: () => panel.toggle(),
   onAnalytics: () => analytics.toggle(),
   onLab: () => lab.toggle(),
+  onSeason: () => seasonView.toggle(),
   onRestart: () => {
     buildMatch(controls.getSeed());
     if (panel.open) panel.refresh();
@@ -128,6 +162,7 @@ function setLang(lang) {
   analytics.setLang(lang);
   setup.setLang(lang);
   lab.setLang(lang);
+  seasonView.setLang(lang);
   document.querySelectorAll('[data-i18n]').forEach((node) => {
     node.textContent = t(node.dataset.i18n, lang);
   });
@@ -155,12 +190,19 @@ function frame(now) {
   renderer.render(world, state.paused ? 1 : alpha);
   hud.update(world);
 
-  // auto-open the post-match analytics at full time
+  // full time: record a league result (season) or open the post-match analytics
   if (world.phase === 'fulltime' && !ftShown) {
     ftShown = true;
     state.paused = true;
     controls.setPlaying(false);
-    analytics.toggle(true);
+    if (state.seasonMatch && state.season) {
+      const fx = state.seasonMatch;
+      state.seasonMatch = null;
+      state.season.completeUserMatch(fx.home, fx.away, world.score.home, world.score.away);
+      seasonView.toggle(true);
+    } else {
+      analytics.toggle(true);
+    }
   }
   // keep an open analytics overlay live (~3 Hz) while the match runs
   if (analytics.open && !state.paused && ++frameCount % 20 === 0) analytics.render();
