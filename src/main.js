@@ -15,12 +15,14 @@ import { Controls } from './ui/controls.js';
 import { Panel } from './ui/panel.js';
 import { AnalyticsView } from './ui/analyticsView.js';
 import { Setup } from './ui/setup.js';
+import { LabView } from './ui/labView.js';
 import { CLUBS } from './tactics/clubs.js';
+import { SCENARIOS } from './modes/scenarios.js';
 import { t } from './ui/i18n.js';
 
 const state = {
   lang: 'ar', speed: 1, paused: false, seed: 42,
-  setup: { homeClubId: null, awayClubId: 'atletico', difficulty: 'normal', adaptive: true },
+  setup: { homeClubId: null, awayClubId: 'atletico', difficulty: 'normal', adaptive: true, scenario: 'none' },
 };
 
 let world;
@@ -33,13 +35,26 @@ function buildMatch(seedInput) {
   state.seed = normalizeSeed(seedInput);
   rng = makeRng(state.seed);
   const s = state.setup;
+  const sc = SCENARIOS[s.scenario];
+  const scSetup = (sc && sc.setup) || {};
+  const awayId = scSetup.awayClubId || s.awayClubId; // scenario can force the opponent
   world = new World({
     seed: state.seed,
     homeClub: s.homeClubId ? CLUBS[s.homeClubId] : undefined,
-    awayClub: s.awayClubId ? CLUBS[s.awayClubId] : undefined,
+    awayClub: awayId ? CLUBS[awayId] : undefined,
     difficulty: s.difficulty,
     adaptive: s.adaptive,
   });
+  // apply scenario state (start clock / score / red card)
+  if (scSetup.score) world.score = { ...scSetup.score };
+  if (scSetup.startClock) {
+    world.half = 2;
+    world.clock = scSetup.startClock;
+    world.injury = 150;
+    world.tick = 1; // skip the tick-0 first-half stoppage roll
+  }
+  if (scSetup.redCard) world.sendOff(scSetup.redCard);
+  if (s.scenario && s.scenario !== 'none') world.scenario = { id: s.scenario };
   stepper = new FixedStepper((dt) => step(world, rng, dt));
   ftShown = false;
 }
@@ -57,6 +72,10 @@ const renderer = new Renderer(canvas);
 const hud = new Hud(document.getElementById('hud'));
 const panel = new Panel(document.getElementById('panel'), { getWorld: () => world });
 const analytics = new AnalyticsView(document.getElementById('analytics'), { getWorld: () => world });
+const lab = new LabView(document.getElementById('lab'), {
+  getSetup: () => state.setup,
+  getSeed: () => state.seed,
+});
 const setup = new Setup(document.getElementById('setup'), {
   onApply: (vals) => {
     state.setup = vals;
@@ -74,6 +93,7 @@ const controls = new Controls(document.getElementById('controls'), {
   onStep: () => stepper.advance(0.5), // advance ~0.5s of in-game time while paused
   onTactics: () => panel.toggle(),
   onAnalytics: () => analytics.toggle(),
+  onLab: () => lab.toggle(),
   onRestart: () => {
     buildMatch(controls.getSeed());
     if (panel.open) panel.refresh();
@@ -91,6 +111,9 @@ const controls = new Controls(document.getElementById('controls'), {
   onToggleNumbers: (b) => {
     renderer.options.numbers = b;
   },
+  onToggleShape: (b) => {
+    renderer.options.shape = b;
+  },
   onToggleLang: () => setLang(state.lang === 'ar' ? 'en' : 'ar'),
 });
 
@@ -104,6 +127,7 @@ function setLang(lang) {
   panel.setLang(lang);
   analytics.setLang(lang);
   setup.setLang(lang);
+  lab.setLang(lang);
   document.querySelectorAll('[data-i18n]').forEach((node) => {
     node.textContent = t(node.dataset.i18n, lang);
   });

@@ -15,6 +15,7 @@ export const DICT = {
   seed: { ar: 'البذرة', en: 'Seed' },
   apply: { ar: 'تطبيق', en: 'Apply' },
   numbers: { ar: 'الأرقام', en: 'Numbers' },
+  shape: { ar: 'الشكل', en: 'Shape' },
   language: { ar: 'English', en: 'العربية' }, // label shows the OTHER language
 
   kickoff: { ar: 'ضربة البداية', en: 'Kickoff' },
@@ -35,6 +36,24 @@ export const DICT = {
   stamina: { ar: 'اللياقة', en: 'Fitness' },
   bench: { ar: 'دكة البدلاء', en: 'Bench' },
   subsLeft: { ar: 'المتبقي', en: 'left' },
+
+  // Phase 7 — modes, what-if, lab
+  lab: { ar: 'المختبر (ماذا لو)', en: 'Lab (what-if)' },
+  whatif: { ar: 'إعادة «ماذا لو» ببذرة ثابتة', en: 'Seeded what-if A/B' },
+  whatifHint: {
+    ar: 'يُعيد المباراة مرتين بنفس البذرة مع تغيير إعداد واحد فقط، ويعرض الفرق.',
+    en: 'Re-runs the match twice on the same seed with one setting changed, and diffs the result.',
+  },
+  runAB: { ar: 'شغّل A/B', en: 'Run A/B' },
+  archTitle: { ar: 'اختبر ضد النماذج', en: 'Test vs archetypes' },
+  archHint: {
+    ar: 'يشغّل تكتيكك ضد طيف من الأندية (بلوك أتلتيكو، خط برشلونة العالي، ضغط سان جيرمان…).',
+    en: "Runs your tactic against a spectrum of clubs (Atlético's block, Barça's high line, PSG's press…).",
+  },
+  runArch: { ar: 'شغّل', en: 'Run' },
+  scenario: { ar: 'السيناريو', en: 'Scenario' },
+  challengeWon: { ar: '✓ نجحت في التحدي', en: '✓ Challenge passed' },
+  challengeLost: { ar: '✗ فشلت في التحدي', en: '✗ Challenge failed' },
 
   // Phase 6 — clubs + adaptive AI
   yourClub: { ar: 'فريقك', en: 'Your club' },

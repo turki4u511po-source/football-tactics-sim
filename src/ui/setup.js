@@ -4,6 +4,7 @@
 // ===========================================================================
 
 import { CLUBS, CLUB_IDS } from '../tactics/clubs.js';
+import { SCENARIOS, SCENARIO_IDS } from '../modes/scenarios.js';
 import { t } from './i18n.js';
 
 export class Setup {
@@ -33,6 +34,9 @@ export class Setup {
         <option value="hard">${L('diff_hard')}</option>
       </select></label>
       <label class="su toggle"><input type="checkbox" data-su="adaptive" checked /><span>${L('adaptiveAI')}</span></label>
+      <label class="su"><span>${L('scenario')}</span><select data-su="scenario">
+        ${SCENARIO_IDS.map((id) => `<option value="${id}">${SCENARIOS[id].name[this.lang]}</option>`).join('')}
+      </select></label>
       <button class="btn primary" data-su="apply">${L('apply2')}</button>`;
     this.el.querySelector('[data-su="apply"]').addEventListener('click', () => this.onApply(this.values()));
   }
@@ -44,6 +48,7 @@ export class Setup {
       awayClubId: q('away').value || null,
       difficulty: q('difficulty').value,
       adaptive: q('adaptive').checked,
+      scenario: q('scenario').value,
     };
   }
 
@@ -56,6 +61,7 @@ export class Setup {
     set('home', v.homeClubId || '');
     set('away', v.awayClubId || '');
     set('difficulty', v.difficulty);
+    set('scenario', v.scenario);
     this.el.querySelector('[data-su="adaptive"]').checked = v.adaptive;
   }
 }

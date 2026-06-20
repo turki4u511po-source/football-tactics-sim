@@ -7,6 +7,7 @@
 import { PITCH, PLAYER, BALL, TEAM_COLORS } from '../engine/constants.js';
 import { drawPitch } from './pitch.js';
 import { lerp } from '../engine/vec.js';
+import { roleLayer } from '../tactics/tactics.js';
 
 const MARGIN = 26; // CSS px of board around the pitch
 
@@ -18,7 +19,7 @@ export class Renderer {
     this.cssW = 0;
     this.cssH = 0;
     this.tf = { scale: 1, ox: 0, oy: 0 };
-    this.options = { numbers: true, lang: 'ar' };
+    this.options = { numbers: true, shape: false, lang: 'ar' };
     this.resize();
   }
 
@@ -58,8 +59,35 @@ export class Renderer {
 
     drawPitch(ctx, tf);
 
+    if (this.options.shape) {
+      this._drawShape(world, 'home', alpha);
+      this._drawShape(world, 'away', alpha);
+    }
     this._drawBall(world, alpha);
     for (const p of world.players) this._drawPlayer(p, alpha);
+  }
+
+  // formation/shape overlay: connect each line (defence / midfield / attack)
+  _drawShape(world, team, alpha) {
+    const ctx = this.ctx;
+    const { scale, ox, oy } = this.tf;
+    const col = TEAM_COLORS[team].fill;
+    const px = (p) => ox + lerp(p.px, p.x, alpha) * scale;
+    const py = (p) => oy + lerp(p.py, p.y, alpha) * scale;
+    for (const layer of [0, 1, 2]) {
+      const ps = world
+        .teamPlayers(team)
+        .filter((p) => !p.isGK && Math.round(roleLayer(p.role)) === layer)
+        .sort((a, b) => a.y - b.y);
+      if (ps.length < 2) continue;
+      ctx.beginPath();
+      ps.forEach((p, i) => (i ? ctx.lineTo(px(p), py(p)) : ctx.moveTo(px(p), py(p))));
+      ctx.strokeStyle = col;
+      ctx.globalAlpha = 0.4;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
   }
 
   _drawPlayer(p, alpha) {

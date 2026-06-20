@@ -9,7 +9,7 @@ heatmaps, shot maps).
 deployable as a **static site to GitHub Pages**. UI is **Arabic-first (RTL)** with
 bilingual English tactical terms.
 
-> Built **phase by phase** per the build spec. **Current status: Phase 6 complete.**
+> Built **phase by phase** per the build spec. **Current status: Phase 7 complete** (core build done; Phase 8 season mode optional).
 >
 > **Phase 2 — Football basics:** on-ball decisions (pass / dribble / shoot / clear),
 > zonal marking, interceptions & tackles, shots with keeper saves, **goals**, proper
@@ -49,6 +49,13 @@ bilingual English tactical terms.
 > extreme **all-out-attacking-vs-deep-block** AI match-ups currently over-score — a known
 > limitation of the chance model under sustained pressure (the club identities and the AI
 > adaptation themselves are correct and visible).
+>
+> **Phase 7 — Modes, what-if & polish:** **Sandbox** (any club vs any, adaptiveness
+> on/off, seeds) with a **Lab**: a **seeded what-if A/B** (re-run the same seed with one
+> setting changed, side-by-side diff) and **test-vs-archetypes** (your tactic vs a
+> spectrum of clubs). **Scenario / Challenge** mode (comeback, 10 men, hold a lead, break
+> a parked bus) with win conditions shown at full time. A **shape overlay** (toggle) draws
+> the formation lines so you can see the in/out-of-possession morph.
 
 ---
 

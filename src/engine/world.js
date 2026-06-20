@@ -76,9 +76,10 @@ export class World {
   } = {}) {
     this.seed = seed;
 
-    // a club (if given) provides tactics + rating + display name
-    const ht = homeClub ? { ...defaultTactics(), ...homeClub.tactics } : homeTactics || defaultTactics();
-    const at = awayClub ? { ...defaultTactics(), ...awayClub.tactics } : awayTactics || defaultTactics();
+    // a club (if given) provides tactics + rating + display name; an explicit
+    // homeTactics/awayTactics still overrides individual settings (used by what-if)
+    const ht = homeClub ? { ...defaultTactics(), ...homeClub.tactics, ...(homeTactics || {}) } : homeTactics || defaultTactics();
+    const at = awayClub ? { ...defaultTactics(), ...awayClub.tactics, ...(awayTactics || {}) } : awayTactics || defaultTactics();
     this.tactics = { home: ht, away: at };
     if (homeFormation) this.tactics.home.formation = homeFormation;
     if (awayFormation) this.tactics.away.formation = awayFormation;
@@ -275,6 +276,18 @@ export class World {
     this.subsUsed[team]++;
     this._index();
     return true;
+  }
+
+  // Send off an outfielder (scenario mode: play with 10 men).
+  sendOff(team) {
+    const arr = this.teamPlayers(team);
+    const idx = arr.findIndex((p) => !p.isGK);
+    if (idx < 0) return;
+    const [out] = arr.splice(idx, 1);
+    out.onPitch = false;
+    if (this.ball.owner === out) this.ball.owner = null;
+    this.players = [...this.home, ...this.away];
+    this._index();
   }
 
   // Man-marking: marker (a player on `team`) shadows a specific opponent.

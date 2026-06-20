@@ -9,6 +9,7 @@ import { TEAM_COLORS } from '../engine/constants.js';
 import { t } from './i18n.js';
 import { poss, passPct, ppdaFor, generateInsights } from '../analytics/analytics.js';
 import { drawHeat, drawShotMap, drawPassNet, drawMomentum } from '../analytics/charts.js';
+import { SCENARIOS } from '../modes/scenarios.js';
 
 const ROWS = [
   ['st_poss', (w, tm) => poss(w, tm) + '%'],
@@ -70,6 +71,14 @@ export class AnalyticsView {
     const insights = generateInsights(w, this.lang).map((i) => `<li>${i}</li>`).join('');
     const phaseDone = w.phase === 'fulltime';
 
+    let scenarioBadge = '';
+    if (w.scenario && SCENARIOS[w.scenario.id] && SCENARIOS[w.scenario.id].win) {
+      const sc = SCENARIOS[w.scenario.id];
+      const res = sc.win(w);
+      const label = res.met ? t('challengeWon', this.lang) : t('challengeLost', this.lang);
+      scenarioBadge = `<div class="scenario-badge ${res.met ? 'won' : 'lost'}">${sc.name[this.lang]} — ${label}</div>`;
+    }
+
     this.el.innerHTML = `
       <div class="a-head">
         <h2>${L('analytics')} — <span style="color:${TEAM_COLORS.home.fill}">${teamName('home')}</span>
@@ -82,6 +91,7 @@ export class AnalyticsView {
           <button class="btn ghost" data-act="a-close">${L('close')}</button>
         </div>
       </div>
+      ${scenarioBadge}
       <div class="a-body">
         <div class="a-left">
           <h3>${L('statsTitle')}</h3>
