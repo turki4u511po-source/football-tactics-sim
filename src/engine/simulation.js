@@ -20,6 +20,7 @@ import {
 import { dist, dist2, norm, clamp, lerp, approach } from './vec.js';
 import { roleLayer, isFullback } from '../tactics/tactics.js';
 import { xgModel, xtValue, heatIndex, makeGrid } from '../analytics/analytics.js';
+import { updateAI, aiReactSoon } from '../ai/adaptiveAI.js';
 
 // ---------------------------------------------------------------------------
 // Public entry point
@@ -42,6 +43,8 @@ export function step(world, rng, dt = FIXED_DT) {
 
   if (world.phase === 'deadball') updateDeadball(world, rng, dt);
   else updatePlay(world, rng, dt);
+
+  updateAI(world); // adaptive opponent (no-op until its next evaluation)
 
   world.clock += dt;
   world.tick += 1;
@@ -77,6 +80,7 @@ function updateHalftime(world, rng, dt) {
     world.half = 2;
     world.clock = HALF_SECONDS; // resume the clock at 45:00
     world.injury = rng.int(MATCH.INJ2_MIN, MATCH.INJ2_MAX);
+    aiReactSoon(world, 8); // the AI re-evaluates early in the second half
     world.startKickoff(world.other(world.firstKickoff));
   }
 }
@@ -204,7 +208,9 @@ function chooseAndExecute(c, world, rng) {
     const prox = clamp(1 - dGoal / SHOT.RANGE, 0, 1);
     const ang = goalAngleFactor(c, goal);
     const quality = prox * ang * (1 - 0.14 * pressure) * (0.55 + 0.45 * c.attr.shooting / 100);
-    shoot = clamp(quality, 0, 1) * SHOT.EAGERNESS * tn.shootEager + rng.spread(0.04);
+    // only shoot genuinely good chances — half-chances get recycled, which keeps
+    // shot volume (and scorelines) sane even against a pinned opponent
+    if (quality >= SHOT.MIN_QUALITY) shoot = clamp(quality, 0, 1) * SHOT.EAGERNESS * tn.shootEager + rng.spread(0.03);
   }
 
   // PASS / THROUGH-BALL (a progressive pass into space behind the line)
@@ -296,12 +302,12 @@ function bestThroughBall(c, world) {
   const goal = world.attackingGoal(c.team);
   const dGoalC = dist(c, goal);
   let best = null;
-  let bestScore = 0.5;
+  let bestScore = 0.66; // through-balls are special: require a genuine opening
   for (const m of world.teamPlayers(c.team)) {
     if (m === c || m.isGK) continue;
     const dm = dist(c, m);
     if (dm < 6 || dm > 42) continue;
-    if (dist(m, goal) > dGoalC - 3) continue; // the runner must be more advanced
+    if (dist(m, goal) > dGoalC - 4) continue; // the runner must be clearly more advanced
     const dir = norm({ x: goal.x - m.x, y: goal.y - m.y });
     const target = {
       x: clamp(m.x + dir.x * 9, 2, PITCH.LENGTH - 2),
@@ -312,9 +318,10 @@ function bestThroughBall(c, world) {
       if (o.isGK) continue;
       space = Math.min(space, dist(o, target));
     }
+    if (space < 4) continue; // the run must actually be into open space
     const lane = laneOpennessPoint(c, target, world);
     const danger = clamp(1 - dist(target, goal) / 60, 0, 1);
-    const score = 0.4 * clamp(space / 6, 0, 1) + 0.35 * lane + 0.4 * danger + 0.1 * (c.attr.vision / 100);
+    const score = 0.4 * clamp(space / 9, 0, 1) + 0.35 * lane + 0.4 * danger + 0.1 * (c.attr.vision / 100);
     if (score > bestScore) {
       bestScore = score;
       best = { target, runner: m, score };
@@ -378,31 +385,48 @@ function executePass(c, mate, world, rng) {
 function executeShot(c, world, rng) {
   const goal = world.attackingGoal(c.team);
   const dGoal = dist(c, goal);
+  const b = world.ball;
+  const defenders = defendersInCone(c, world);
+  const gkClose = dist(world.goalkeeperOf(world.other(c.team)), goal) < 7;
+  const xg = xgModel({ distance: dGoal, angleFactor: goalAngleFactor(c, goal), defenders, gkClose });
+
+  // every attempt is a shot for the count + xG
+  world.stats[c.team].shots++;
+  world.stats[c.team].xg += xg;
+  const shot = { team: c.team, x: c.x, y: c.y, dir: world.attackDir[c.team], xg, onTarget: false, outcome: 'off', t: world.clock };
+  world.shotLog.push(shot);
+  world.events.push({ type: 'shot', team: c.team, t: world.clock, xg });
+  world.timeline.push({ t: world.clock, h: world.stats.home.xg, a: world.stats.away.xg });
+  world.lastTouchTeam = c.team;
+
+  // a packed block charges down the shot — this is what makes a deep block resilient
+  if (defenders > 0 && rng.chance(clamp(0.34 * defenders, 0, 0.75))) {
+    shot.outcome = 'blocked';
+    const ang = Math.atan2(goal.y - c.y, goal.x - c.x) + rng.spread(1.3);
+    b.vx = Math.cos(ang) * 8;
+    b.vy = Math.sin(ang) * 8;
+    b.isShot = b.isPass = false;
+    b.lastKicker = c;
+    b.selfLock = 0.1;
+    b.flightLock = BALL.FLIGHT_LOCK;
+    releaseCarry(world, c);
+    return;
+  }
+
+  // clean strike on goal
   const half = PITCH.GOAL_WIDTH / 2 - 0.3;
   const aim = { x: goal.x, y: goal.y + rng.spread(half * 0.85) };
   const pressure = pressureCount(c, world);
   const spread = SHOT.SPREAD * (0.5 + dGoal / SHOT.RANGE) * (1.4 - c.attr.shooting / 100) + 0.04 * pressure;
-  kickToward(world.ball, c, aim, SHOT.SPEED, rng, spread);
-  const b = world.ball;
+  kickToward(b, c, aim, SHOT.SPEED, rng, spread);
   b.isShot = true;
   b.isPass = false;
   b.lastKicker = c;
   b.selfLock = 0.05;
-  world.lastTouchTeam = c.team;
   const onTarget = predictOnTarget(world, c.team);
-  b.shotOnTarget = onTarget;
-  // xG: distance, angle, bodies in the cone, keeper proximity
-  const defenders = defendersInCone(c, world);
-  const gkClose = dist(world.goalkeeperOf(world.other(c.team)), goal) < 7;
-  const xg = xgModel({ distance: dGoal, angleFactor: goalAngleFactor(c, goal), defenders, gkClose });
-  world.stats[c.team].shots++;
-  world.stats[c.team].xg += xg;
+  shot.onTarget = onTarget;
   if (onTarget) world.stats[c.team].shotsOnTarget++;
-  const shot = { team: c.team, x: c.x, y: c.y, dir: world.attackDir[c.team], xg, onTarget, outcome: 'off', t: world.clock };
-  world.shotLog.push(shot);
-  b._shotEvent = shot; // updated to 'goal' / 'saved' / 'blocked' on resolution
-  world.events.push({ type: 'shot', team: c.team, t: world.clock, onTarget, xg });
-  world.timeline.push({ t: world.clock, h: world.stats.home.xg, a: world.stats.away.xg });
+  b._shotEvent = shot; // updated to 'goal' / 'saved' on resolution
   releaseCarry(world, c);
 }
 
@@ -587,6 +611,7 @@ function scoreGoal(world, goalX) {
   world.events.push({ type: 'goal', team: scoring, t: world.clock, half: world.half, via, ownGoal });
   world.goalFlashUntil = world.clock + MATCH.GOAL_FLASH;
   world.goalFlashTeam = scoring;
+  aiReactSoon(world); // the AI re-thinks shortly after a goal
   world.startKickoff(conceding);
 }
 
@@ -681,9 +706,10 @@ function assignMarks(world, team, order, marks) {
       if (t) taken.add(t);
     }
   }
-  // skip the presser (rank 0) and leave the most advanced 1-2 free (rest/counter)
-  // so the attacking side can still find a spare man — keeps chances flowing
-  const limit = Math.min(defs.length, 6);
+  // the presser (rank 0) plus the nearest markers pick up opponents; the rest
+  // hold a zonal block (compactness), which is harder to play through than pure
+  // man-marking and keeps chances realistic
+  const limit = Math.min(defs.length, 7);
   for (let i = 1; i < limit; i++) {
     const d = defs[i];
     if (world.manMarks[d.id]) continue; // man-marker: handled separately
@@ -781,8 +807,10 @@ function phaseHome(p, world, inPoss) {
   const layer = Math.max(roleLayer(p.role), 0); // 0 def .. 2 fwd
   const C = PITCH.WIDTH / 2;
 
-  // depth from own goal: defensive block sits at the line; in possession it pushes up
-  const depth = inPoss ? tn.lineBase + tn.attackPush + layer * 16 : tn.lineBase + layer * 10;
+  // depth from own goal: defensive block sits at the line; in possession it pushes
+  // up — but defenders hold back (rest defense) so the team never fully camps
+  const push = layer >= 1 ? tn.attackPush : tn.attackPush * 0.25;
+  const depth = inPoss ? tn.lineBase + push + layer * 16 : tn.lineBase + layer * 10;
   let x = ogX + dir * depth;
 
   // width: spread from centre (wider in possession, compact when defending)

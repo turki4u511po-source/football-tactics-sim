@@ -9,7 +9,7 @@ heatmaps, shot maps).
 deployable as a **static site to GitHub Pages**. UI is **Arabic-first (RTL)** with
 bilingual English tactical terms.
 
-> Built **phase by phase** per the build spec. **Current status: Phase 3 complete.**
+> Built **phase by phase** per the build spec. **Current status: Phase 6 complete.**
 >
 > **Phase 2 — Football basics:** on-ball decisions (pass / dribble / shoot / clear),
 > zonal marking, interceptions & tackles, shots with keeper saves, **goals**, proper
@@ -35,6 +35,20 @@ bilingual English tactical terms.
 > interceptions, corners, fouls, **PPDA**, a **shot map** (size = xG), team
 > **heatmaps**, **pass network**, a **momentum** (cumulative-xG) graph, plain-language
 > **insights** (Arabic/English), and **JSON / PNG export**. Auto-opens at full time.
+>
+> **Phase 6 — Real clubs + adaptive AI:** **17 clubs** (2025-26 identities) selectable
+> as your team and the opponent — each a tactics preset + overall rating + signature
+> (Barça's very-high line, Atlético's deep block, City's inverted full-back, …), with
+> back-three formations added. An **adaptive AI** runs the opponent: it re-evaluates
+> every ~10 min / after goals / at half-time and makes one change (chase when behind,
+> park the bus when ahead late, drop & counter when dominated, drop a beaten high
+> line; Hard also doubles up your strong flank). Difficulty Easy/Normal/Hard;
+> adaptiveness can be turned off for a static sparring partner.
+>
+> *Balance note:* default and moderate match-ups produce believable scores (~2–6 goals);
+> extreme **all-out-attacking-vs-deep-block** AI match-ups currently over-score — a known
+> limitation of the chance model under sustained pressure (the club identities and the AI
+> adaptation themselves are correct and visible).
 
 ---
 

@@ -6,7 +6,7 @@
 
 export const DICT = {
   title: { ar: 'محاكي التكتيك الكروي', en: 'Football Tactics Simulator' },
-  phaseTag: { ar: 'المرحلة ١ — الملعب والحركة', en: 'Phase 1 — Pitch & Motion' },
+  phaseTag: { ar: 'محاكاة تكتيكية — أندية حقيقية وذكاء متكيّف', en: 'Tactical sim — real clubs & adaptive AI' },
 
   play: { ar: 'تشغيل', en: 'Play' },
   pause: { ar: 'إيقاف', en: 'Pause' },
@@ -35,6 +35,18 @@ export const DICT = {
   stamina: { ar: 'اللياقة', en: 'Fitness' },
   bench: { ar: 'دكة البدلاء', en: 'Bench' },
   subsLeft: { ar: 'المتبقي', en: 'left' },
+
+  // Phase 6 — clubs + adaptive AI
+  yourClub: { ar: 'فريقك', en: 'Your club' },
+  opponent: { ar: 'الخصم', en: 'Opponent' },
+  difficulty: { ar: 'الصعوبة', en: 'Difficulty' },
+  adaptiveAI: { ar: 'ذكاء متكيّف', en: 'Adaptive AI' },
+  custom: { ar: 'مخصّص (أزرق)', en: 'Custom (Blue)' },
+  customAway: { ar: 'مخصّص (أحمر)', en: 'Custom (Red)' },
+  diff_easy: { ar: 'سهل', en: 'Easy' },
+  diff_normal: { ar: 'عادي', en: 'Normal' },
+  diff_hard: { ar: 'صعب', en: 'Hard' },
+  apply2: { ar: 'ابدأ المباراة', en: 'Start match' },
 
   // Phase 5 — analytics
   analytics: { ar: 'التحليلات', en: 'Analytics' },

@@ -60,7 +60,7 @@ export class AnalyticsView {
     const w = this.getWorld();
     if (!w) return;
     const L = (k) => t(k, this.lang);
-    const teamName = (tm) => TEAM_COLORS[tm].name[this.lang];
+    const teamName = (tm) => w.teamName(tm, this.lang);
 
     const rows = ROWS.map(
       ([key, fn]) =>

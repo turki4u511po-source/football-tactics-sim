@@ -4,7 +4,7 @@
 // (that lives in simulation.js) and no DOM.
 // ===========================================================================
 
-import { PITCH, TEAM, RESTART_PAUSE, STAMINA } from './constants.js';
+import { PITCH, TEAM, TEAM_COLORS, RESTART_PAUSE, STAMINA } from './constants.js';
 import { Player, Ball } from './entities.js';
 import { FORMATIONS, DEFAULT_FORMATION } from './formations.js';
 import { lerp, dist2 } from './vec.js';
@@ -39,6 +39,16 @@ function emptyStats() {
   return { shots: 0, shotsOnTarget: 0, xg: 0, passes: 0, passesCompleted: 0, tackles: 0, interceptions: 0, fouls: 0, corners: 0, possTicks: 0 };
 }
 
+// scale a team's skill attributes by an overall club rating (modest spread)
+function scaleAttrs(players, rating) {
+  const f = 0.7 + 0.4 * rating; // ~0.96 .. 1.07 over the club range
+  for (const p of players) {
+    for (const k of ['pace', 'passing', 'shooting', 'dribbling', 'tackling', 'positioning', 'vision']) {
+      p.attr[k] = Math.min(99, Math.round(p.attr[k] * f));
+    }
+  }
+}
+
 // Bench players for a team (generic roles, off the pitch until subbed on).
 const BENCH_ROLES = ['CB', 'FB', 'CM', 'CM', 'AM', 'W', 'ST'];
 function makeBench(team) {
@@ -60,16 +70,29 @@ function makeBench(team) {
 }
 
 export class World {
-  constructor({ seed = 1, homeTactics, awayTactics, homeFormation, awayFormation } = {}) {
+  constructor({
+    seed = 1, homeTactics, awayTactics, homeFormation, awayFormation,
+    homeClub, awayClub, difficulty = 'normal', adaptive = true,
+  } = {}) {
     this.seed = seed;
 
-    // tactical settings + derived numeric tuning (the engine reads `tuning`)
-    this.tactics = { home: homeTactics || defaultTactics(), away: awayTactics || defaultTactics() };
+    // a club (if given) provides tactics + rating + display name
+    const ht = homeClub ? { ...defaultTactics(), ...homeClub.tactics } : homeTactics || defaultTactics();
+    const at = awayClub ? { ...defaultTactics(), ...awayClub.tactics } : awayTactics || defaultTactics();
+    this.tactics = { home: ht, away: at };
     if (homeFormation) this.tactics.home.formation = homeFormation;
     if (awayFormation) this.tactics.away.formation = awayFormation;
     this.tuning = { home: derive(this.tactics.home), away: derive(this.tactics.away) };
     this.homeFormation = this.tactics.home.formation;
     this.awayFormation = this.tactics.away.formation;
+    this.clubName = {
+      home: homeClub ? homeClub.name : TEAM_COLORS.home.name,
+      away: awayClub ? awayClub.name : TEAM_COLORS.away.name,
+    };
+    this.rating = { home: homeClub ? homeClub.rating : 1, away: awayClub ? awayClub.rating : 1 };
+
+    // adaptive-AI config (the AI controls the away team)
+    this.ai = { enabled: adaptive, difficulty, team: TEAM.AWAY, nextEval: 0, changes: [] };
 
     // live attacking direction per team (flips at half-time)
     this.attackDir = { home: +1, away: -1 };
@@ -77,6 +100,8 @@ export class World {
     this.home = placeTeam(TEAM.HOME, this.homeFormation, this.attackDir.home);
     this.away = placeTeam(TEAM.AWAY, this.awayFormation, this.attackDir.away);
     this.players = [...this.home, ...this.away];
+    if (homeClub) scaleAttrs(this.home, homeClub.rating);
+    if (awayClub) scaleAttrs(this.away, awayClub.rating);
 
     // substitutes (off the pitch until brought on)
     this.bench = { home: makeBench(TEAM.HOME), away: makeBench(TEAM.AWAY) };
@@ -129,6 +154,10 @@ export class World {
   }
   goalkeeperOf(team) {
     return this.teamPlayers(team).find((p) => p.isGK);
+  }
+  teamName(team, lang = 'ar') {
+    const n = this.clubName[team];
+    return (n && (n[lang] || n.ar)) || team;
   }
 
   // Center of the goal this team is ATTACKING / DEFENDING (uses live direction).

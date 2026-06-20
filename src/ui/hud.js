@@ -34,8 +34,8 @@ export class Hud {
   }
 
   update(world) {
-    this.$('[data-home-name]').textContent = TEAM_COLORS.home.name[this.lang];
-    this.$('[data-away-name]').textContent = TEAM_COLORS.away.name[this.lang];
+    this.$('[data-home-name]').textContent = world.teamName('home', this.lang);
+    this.$('[data-away-name]').textContent = world.teamName('away', this.lang);
     this.$('[data-score-home]').textContent = world.score.home;
     this.$('[data-score-away]').textContent = world.score.away;
 

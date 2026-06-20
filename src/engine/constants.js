@@ -90,13 +90,13 @@ export const SHOT = {
   GOOD_RANGE: 11,             // high-confidence shooting distance
   SPEED: 27,                  // shot ball speed (m/s)
   SPREAD: 0.42,             // base aim jitter (radians), worse w/ distance & pressure
-  EAGERNESS: 0.8,        // global damping on how readily players shoot
+  EAGERNESS: 0.85, MIN_QUALITY: 0.0, // shoot only good chances
 };
 
 export const GK = {
   LINE_OFFSET: 2.2,           // how far off the goal line the keeper sits
-  SAVE_REACH: 4.8,           // a shot within this of the keeper can be saved
-  CATCH_CHANCE: 0.93,         // chance a reachable shot is caught (else parried wide)
+  SAVE_REACH: 6.0,           // a shot within this of the keeper can be saved
+  CATCH_CHANCE: 0.95,         // chance a reachable shot is caught (else parried wide)
   ANTICIPATE_RANGE: 40,       // start tracking an incoming shot within this
   REACH_SPEED_BONUS: 2.2,     // keeper moves faster reacting to a live shot
   TRACK_Y: 3.4,              // max lateral offset from goal centre in open play
