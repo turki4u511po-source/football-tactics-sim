@@ -46,7 +46,7 @@ export const PLAYER = {
   BASE_SPEED: 7.4,     // m/s outfield top speed
   GK_SPEED: 5.6,
   ACCEL: 22,           // m/s^2 toward desired velocity
-  DRIBBLE_FACTOR: 0.78,// a player on the ball is slower than one running freely
+  DRIBBLE_FACTOR: 0.86,// a player on the ball is slower than one running freely
   SLOW_RADIUS: 2.2,    // start easing when within this of target
   CONTROL_RADIUS: 1.5, // distance to collect a loose ball
   STEAL_RADIUS: 2.0,   // opponent must be within this to contest the carrier
@@ -63,7 +63,7 @@ export const BALL = {
 
 // --- Off-ball / shape knobs ----------------------------------------------
 export const SIM = {
-  STEAL_CHANCE_PER_TICK: 0.08, // per-tick probability an adjacent opponent tackles the carrier
+  STEAL_CHANCE_PER_TICK: 0.045,// per-tick probability an adjacent opponent tackles the carrier
   BLOCK_SHIFT_X: 0.42,        // how far the team shifts toward the ball along x
   BLOCK_SHIFT_Y: 0.40,        // ... and along y
   PASS_MIN_RANGE: 5,          // teammates closer than this aren't pass targets
@@ -90,7 +90,7 @@ export const SHOT = {
   GOOD_RANGE: 11,             // high-confidence shooting distance
   SPEED: 27,                  // shot ball speed (m/s)
   SPREAD: 0.42,             // base aim jitter (radians), worse w/ distance & pressure
-  EAGERNESS: 0.5,         // global damping on how readily players shoot
+  EAGERNESS: 0.8,        // global damping on how readily players shoot
 };
 
 export const GK = {

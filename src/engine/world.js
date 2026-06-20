@@ -8,6 +8,7 @@ import { PITCH, TEAM, RESTART_PAUSE } from './constants.js';
 import { Player, Ball } from './entities.js';
 import { FORMATIONS, DEFAULT_FORMATION } from './formations.js';
 import { lerp, dist2 } from './vec.js';
+import { defaultTactics, derive } from '../tactics/tactics.js';
 
 // Map a normalized formation slot into pitch meters for one team.
 // Home starts on the left half (own goal at x=0); away mirrors into the right.
@@ -39,16 +40,22 @@ function emptyStats() {
 }
 
 export class World {
-  constructor({ seed = 1, homeFormation = DEFAULT_FORMATION, awayFormation = DEFAULT_FORMATION } = {}) {
+  constructor({ seed = 1, homeTactics, awayTactics, homeFormation, awayFormation } = {}) {
     this.seed = seed;
-    this.homeFormation = homeFormation;
-    this.awayFormation = awayFormation;
+
+    // tactical settings + derived numeric tuning (the engine reads `tuning`)
+    this.tactics = { home: homeTactics || defaultTactics(), away: awayTactics || defaultTactics() };
+    if (homeFormation) this.tactics.home.formation = homeFormation;
+    if (awayFormation) this.tactics.away.formation = awayFormation;
+    this.tuning = { home: derive(this.tactics.home), away: derive(this.tactics.away) };
+    this.homeFormation = this.tactics.home.formation;
+    this.awayFormation = this.tactics.away.formation;
 
     // live attacking direction per team (flips at half-time)
     this.attackDir = { home: +1, away: -1 };
 
-    this.home = placeTeam(TEAM.HOME, homeFormation, this.attackDir.home);
-    this.away = placeTeam(TEAM.AWAY, awayFormation, this.attackDir.away);
+    this.home = placeTeam(TEAM.HOME, this.homeFormation, this.attackDir.home);
+    this.away = placeTeam(TEAM.AWAY, this.awayFormation, this.attackDir.away);
     this.players = [...this.home, ...this.away];
 
     this.ball = new Ball(PITCH.LENGTH / 2, PITCH.WIDTH / 2);
@@ -64,6 +71,7 @@ export class World {
 
     this.firstKickoff = TEAM.HOME;
     this.lastTouchTeam = null;
+    this.counterUntil = { home: 0, away: 0 }; // counter-attack transition window (clock seconds)
 
     // banner / cue helpers (read by the renderer)
     this.goalFlashUntil = 0;
@@ -164,6 +172,28 @@ export class World {
 
   startKickoff(team) {
     this.setRestart('kickoff', team, PITCH.LENGTH / 2, PITCH.WIDTH / 2);
+  }
+
+  // Apply tactical changes (pre-match or live). Re-derives tuning; if the
+  // formation changes, re-places that team's anchors.
+  setTactics(team, partial) {
+    Object.assign(this.tactics[team], partial);
+    this.tuning[team] = derive(this.tactics[team]);
+    if (partial.formation) {
+      const dir = this.attackDir[team];
+      const fresh = placeTeam(team, partial.formation, dir);
+      const old = this.teamPlayers(team);
+      // keep live positions/numbers; just move each player's formation anchor
+      old.forEach((p, i) => {
+        if (fresh[i]) {
+          p.home = { x: fresh[i].home.x, y: fresh[i].home.y };
+          p.role = fresh[i].role;
+          p.isGK = fresh[i].isGK;
+        }
+      });
+      if (team === TEAM.HOME) this.homeFormation = partial.formation;
+      else this.awayFormation = partial.formation;
+    }
   }
 
   // --- half-time end swap --------------------------------------------------

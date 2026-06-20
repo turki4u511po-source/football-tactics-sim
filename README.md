@@ -9,13 +9,20 @@ heatmaps, shot maps).
 deployable as a **static site to GitHub Pages**. UI is **Arabic-first (RTL)** with
 bilingual English tactical terms.
 
-> Built **phase by phase** per the build spec. **Current status: Phase 2 complete.**
+> Built **phase by phase** per the build spec. **Current status: Phase 3 complete.**
 >
 > **Phase 2 — Football basics:** on-ball decisions (pass / dribble / shoot / clear),
 > zonal marking, interceptions & tackles, shots with keeper saves, **goals**, proper
 > restarts (kickoff / throw-in / corner / goal kick), and full match flow — two 45'
 > halves + stoppage time, half-time end-swap, full time — playing 90 in-game minutes
 > in ~5 real minutes and ending with a believable scoreline.
+>
+> **Phase 3 — Tactical system + Principles Engine:** every team instruction
+> (mentality · playstyle · pressing · defensive line · width · tempo · build-up ·
+> attacking focus) maps to numeric tuning that visibly changes the dots, plus
+> **shape morphing** (different in-/out-of-possession positions), pressing triggers
+> by line height, marking, **through-balls & penetrating runs**, and counter-attack
+> transitions. `npm test` proves each setting moves play the expected way.
 
 ---
 

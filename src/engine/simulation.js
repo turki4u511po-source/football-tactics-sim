@@ -18,6 +18,7 @@ import {
   FIXED_DT, HALF_SECONDS, TEAM,
 } from './constants.js';
 import { dist, dist2, norm, clamp, lerp, approach } from './vec.js';
+import { roleLayer, isFullback } from '../tactics/tactics.js';
 
 // ---------------------------------------------------------------------------
 // Public entry point
@@ -111,7 +112,7 @@ function updateDeadball(world, rng, dt) {
     rec.hasBall = true;
     rec.holdTime = 0;
     rec.carryTime = 0;
-    rec.nextDecision = r.type === 'kickoff' ? 0.4 : rng.range(DECISION.MIN, DECISION.MAX);
+    rec.nextDecision = r.type === 'kickoff' ? 0.4 : decisionTime(world, rec.team, rng);
     b.isShot = b.isPass = false;
     b.lastKicker = null;
     b.selfLock = 0;
@@ -167,6 +168,7 @@ function carrierLogic(world, rng, dt) {
 }
 
 function chooseAndExecute(c, world, rng) {
+  const tn = world.tuning[c.team];
   const goal = world.attackingGoal(c.team);
   const dGoal = dist(c, goal);
   const pressure = pressureCount(c, world);
@@ -178,12 +180,14 @@ function chooseAndExecute(c, world, rng) {
     const prox = clamp(1 - dGoal / SHOT.RANGE, 0, 1);
     const ang = goalAngleFactor(c, goal);
     const quality = prox * ang * (1 - 0.14 * pressure) * (0.55 + 0.45 * c.attr.shooting / 100);
-    shoot = clamp(quality, 0, 1) * SHOT.EAGERNESS + rng.spread(0.04);
+    shoot = clamp(quality, 0, 1) * SHOT.EAGERNESS * tn.shootEager + rng.spread(0.04);
   }
 
-  // PASS
+  // PASS / THROUGH-BALL (a progressive pass into space behind the line)
   const pass = bestPass(c, world);
   const passScore = pass ? pass.score : -1;
+  const through = bestThroughBall(c, world);
+  const throughScore = through ? through.score : -1;
 
   // DRIBBLE (never dribble the ball into the keeper from point-blank range)
   let dribble = -1;
@@ -192,33 +196,39 @@ function chooseAndExecute(c, world, rng) {
     dribble = space * (0.45 + 0.55 * c.attr.dribbling / 100) - 0.12 * pressure + (dGoal < 45 ? 0.05 : 0);
   }
 
-  // CLEAR (deep defenders/keeper boot it clear when pressed; otherwise build short)
+  // CLEAR (deep defenders/keeper; long build-up boots it, short build-up keeps it)
   let clear = -1;
-  if (deepInOwnThird(c, world)) clear = 0.45 + 0.12 * pressure;
+  if (deepInOwnThird(c, world)) clear = 0.4 + 0.12 * pressure + tn.buildupLong * 0.45;
 
   let action = 'dribble';
   let bestv = dribble;
   if (passScore > bestv) { action = 'pass'; bestv = passScore; }
+  if (throughScore > bestv) { action = 'through'; bestv = throughScore; }
   if (shoot > bestv) { action = 'shoot'; bestv = shoot; }
   if (clear > bestv) { action = 'clear'; bestv = clear; }
-  if (forced && action === 'dribble') action = pass ? 'pass' : 'clear';
+  if (forced && action === 'dribble') action = through ? 'through' : pass ? 'pass' : 'clear';
 
   if (action === 'shoot') executeShot(c, world, rng);
+  else if (action === 'through') executeThroughBall(c, through.target, world, rng);
   else if (action === 'pass') executePass(c, pass.mate, world, rng);
   else if (action === 'clear') executeClear(c, world, rng);
   else {
-    // keep dribbling; re-decide shortly
+    // keep dribbling; re-decide shortly (scaled by tempo)
     c.holdTime = 0;
-    c.nextDecision = DECISION.DRIBBLE_GAP;
+    c.nextDecision = DECISION.DRIBBLE_GAP * world.tuning[c.team].tempoMul;
   }
 }
 
 // --- candidate evaluation ---------------------------------------------------
 function bestPass(c, world) {
+  const tn = world.tuning[c.team];
   const goal = world.attackingGoal(c.team);
   const dGoalC = dist(c, goal);
   let best = null;
   let bestScore = 0.3; // low bar: keep a recycle option so bad chances are passed, not shot
+  // directness trades openness (keep it) against progression (force it forward)
+  const wOpen = 0.65 - 0.3 * tn.directness;
+  const wProg = 0.12 + 0.4 * tn.directness;
   for (const m of world.teamPlayers(c.team)) {
     if (m === c || m.isGK) continue;
     const d = dist(c, m);
@@ -226,8 +236,9 @@ function bestPass(c, world) {
     const progress = clamp((dGoalC - dist(m, goal)) / 30, -1, 1);
     const open = laneOpenness(c, m, world);
     const recPress = pressureCount(m, world);
-    // value keeping the ball (open, unpressured) over forcing it forward
-    const score = 0.55 * open + 0.22 * ((progress + 1) / 2) - 0.2 * recPress + 0.1 * (c.attr.passing / 100);
+    let score = wOpen * open + wProg * ((progress + 1) / 2) - 0.2 * recPress + 0.1 * (c.attr.passing / 100);
+    if (tn.focus === 'left' && m.y < PITCH.WIDTH / 2) score += 0.05;
+    else if (tn.focus === 'right' && m.y > PITCH.WIDTH / 2) score += 0.05;
     if (score > bestScore) {
       bestScore = score;
       best = m;
@@ -243,6 +254,59 @@ function laneOpenness(a, b, world) {
     if (dd < minD) minD = dd;
   }
   return clamp(minD / 3.5, 0, 1);
+}
+
+function laneOpennessPoint(a, pt, world) {
+  let minD = Infinity;
+  for (const o of world.opponentsOf(a.team)) {
+    if (o.isGK) continue;
+    const dd = pointSegDist(o, a, pt);
+    if (dd < minD) minD = dd;
+  }
+  return clamp(minD / 3.5, 0, 1);
+}
+
+// A progressive pass into the space ahead of an advancing team-mate. This is
+// what breaks a defensive block and what punishes a high line (big space behind).
+function bestThroughBall(c, world) {
+  const goal = world.attackingGoal(c.team);
+  const dGoalC = dist(c, goal);
+  let best = null;
+  let bestScore = 0.5;
+  for (const m of world.teamPlayers(c.team)) {
+    if (m === c || m.isGK) continue;
+    const dm = dist(c, m);
+    if (dm < 6 || dm > 42) continue;
+    if (dist(m, goal) > dGoalC - 3) continue; // the runner must be more advanced
+    const dir = norm({ x: goal.x - m.x, y: goal.y - m.y });
+    const target = {
+      x: clamp(m.x + dir.x * 9, 2, PITCH.LENGTH - 2),
+      y: clamp(m.y + dir.y * 9, 4, PITCH.WIDTH - 4),
+    };
+    let space = Infinity;
+    for (const o of world.opponentsOf(c.team)) {
+      if (o.isGK) continue;
+      space = Math.min(space, dist(o, target));
+    }
+    const lane = laneOpennessPoint(c, target, world);
+    const danger = clamp(1 - dist(target, goal) / 60, 0, 1);
+    const score = 0.4 * clamp(space / 6, 0, 1) + 0.35 * lane + 0.4 * danger + 0.1 * (c.attr.vision / 100);
+    if (score > bestScore) {
+      bestScore = score;
+      best = { target, runner: m, score };
+    }
+  }
+  return best;
+}
+
+// off-ball penetrating run toward goal, drifting into the nearest channel
+function runTarget(p, world) {
+  const goal = world.attackingGoal(p.team);
+  const dir = norm({ x: goal.x - p.x, y: goal.y - p.y });
+  const ahead = { x: p.x + dir.x * 14, y: p.y + dir.y * 14 };
+  const o = nearestOpponentWithin(world, p, 8);
+  if (o) ahead.y += (p.y >= o.y ? 1 : -1) * 5; // peel away from the marker
+  return { x: clamp(ahead.x, 2, PITCH.LENGTH - 2), y: clamp(ahead.y, 5, PITCH.WIDTH - 5) };
 }
 
 function spaceAhead(c, world) {
@@ -309,6 +373,20 @@ function executeShot(c, world, rng) {
   releaseCarry(world, c);
 }
 
+function executeThroughBall(c, target, world, rng) {
+  const d = dist(c, target);
+  const power = clamp(PASS.BASE_SPEED + d * 0.8, 12, BALL.MAX_SPEED);
+  kickToward(world.ball, c, target, power, rng, PASS.SPREAD * 0.9);
+  const b = world.ball;
+  b.isPass = true;
+  b.isShot = false;
+  b.lastKicker = c;
+  b.selfLock = PASS.SELF_LOCK;
+  world.lastTouchTeam = c.team;
+  world.stats[c.team].passes++;
+  releaseCarry(world, c);
+}
+
 function executeClear(c, world, rng) {
   const goal = world.attackingGoal(c.team);
   const dir = norm({ x: goal.x - c.x, y: 0 });
@@ -336,16 +414,25 @@ function releaseCarry(world, c) {
   world.ball.owner = null;
 }
 
+function decisionTime(world, team, rng) {
+  return rng.range(DECISION.MIN, DECISION.MAX) * world.tuning[team].tempoMul;
+}
+
 function giveBall(world, p, rng) {
   const b = world.ball;
+  if (b.owner && b.owner !== p) b.owner.hasBall = false; // clear the dispossessed carrier
   if (b.isPass && b.lastKicker && b.lastKicker.team === p.team && b.lastKicker !== p) {
     world.stats[p.team].passesCompleted++;
+  }
+  // winning the ball off the opponent opens a counter-attack window
+  if (b.lastKicker && b.lastKicker.team !== p.team && world.tuning[p.team].counter) {
+    world.counterUntil[p.team] = world.clock + 3;
   }
   b.owner = p;
   p.hasBall = true;
   p.holdTime = 0;
   p.carryTime = 0;
-  p.nextDecision = rng.range(DECISION.MIN, DECISION.MAX);
+  p.nextDecision = decisionTime(world, p.team, rng);
   b.vx = b.vy = 0;
   b.isShot = b.isPass = false;
   b.lastKicker = null;
@@ -531,7 +618,10 @@ function assignMarks(world, team, order, marks) {
   const defs = world.teamPlayers(team).filter((p) => !p.isGK);
   defs.sort((a, c) => (order.get(a) ?? 99) - (order.get(c) ?? 99));
   const taken = new Set();
-  for (let i = 1; i < defs.length; i++) {
+  // skip the presser (rank 0) and leave the most advanced 1-2 free (rest/counter)
+  // so the attacking side can still find a spare man — keeps chances flowing
+  const limit = Math.min(defs.length, 6);
+  for (let i = 1; i < limit; i++) {
     const d = defs[i];
     let best = null;
     let bd = Infinity;
@@ -553,30 +643,40 @@ function assignMarks(world, team, order, marks) {
 function decideTarget(p, world, order, marks) {
   const b = world.ball;
   if (p.isGK) return goalkeeperTarget(p, world);
-  if (p.hasBall) return dribbleTarget(p, world);
+  if (b.owner === p) return dribbleTarget(p, world); // authoritative: only the real carrier dribbles
 
   const rank = order[p.team].get(p) ?? 99;
   const myTeamHasBall = b.owner && b.owner.team === p.team;
 
+  const tn = world.tuning[p.team];
+
   if (myTeamHasBall) {
-    // closest pushes ahead to support; others keep the (ball-shifted) shape
+    const goal = world.attackingGoal(p.team);
+    // closest pushes ahead to support; further on a counter-attack
     if (rank === 0) {
-      const goal = world.attackingGoal(p.team);
       const dir = norm({ x: goal.x - b.x, y: goal.y - b.y });
-      return { x: b.x + dir.x * 12, y: clamp(b.y + dir.y * 12, 6, PITCH.WIDTH - 6) };
+      const reach = world.counterUntil[p.team] > world.clock ? 20 : 12;
+      return { x: b.x + dir.x * reach, y: clamp(b.y + dir.y * reach, 6, PITCH.WIDTH - 6) };
     }
+    // forwards make penetrating runs (toward goal, into channels) when advanced
+    if (roleLayer(p.role) >= 2 && dist(b, goal) < 72) return runTarget(p, world);
     return shiftedHome(p, world);
   }
 
-  // defending / loose ball
-  if (rank === 0) {
-    // don't charge the opposing keeper inside his box — screen the outlet instead
+  // defending / loose ball — pressing setting decides how high we engage, but a
+  // LOOSE ball is always contested (the block only "sits off" a settled opponent)
+  const ballDepth = Math.abs(b.x - world.ownGoal(p.team).x); // how deep the ball is in our half
+  const engage = !b.owner || tn.pressHard || ballDepth <= tn.pressRange;
+  const isPresser = rank === 0 || (rank === 1 && tn.gegen);
+  if (isPresser) {
     const o = b.owner;
     if (o && o.isGK && dist(o, world.ownGoal(o.team)) < 18) {
+      // don't charge the opposing keeper inside his box — screen the outlet
       const toMid = norm({ x: PITCH.LENGTH / 2 - o.x, y: PITCH.WIDTH / 2 - o.y });
       return { x: o.x + toMid.x * 15, y: clamp(o.y + toMid.y * 15, 6, PITCH.WIDTH - 6) };
     }
-    return { x: b.x, y: b.y }; // primary presser
+    if (engage) return { x: b.x, y: b.y };
+    return shiftedHome(p, world); // low/mid block: hold the line, don't chase high
   }
 
   const mark = marks.get(p);
@@ -588,11 +688,12 @@ function decideTarget(p, world, order, marks) {
   return { x: lerp(home.x, gs.x, 0.4), y: lerp(home.y, gs.y, 0.4) };
 }
 
-// shadow an opponent from the goal side, tight enough to contest a pass to them
+// shadow an opponent from the goal side — close enough to contest, loose enough
+// that the attacking side can still create the occasional chance
 function markTarget(att, world, team) {
   const og = world.ownGoal(team);
   const dir = norm({ x: og.x - att.x, y: og.y - att.y });
-  return { x: att.x + dir.x * 1.7, y: clamp(att.y + dir.y * 1.7, 3, PITCH.WIDTH - 3) };
+  return { x: att.x + dir.x * 2.6, y: clamp(att.y + dir.y * 2.6, 3, PITCH.WIDTH - 3) };
 }
 
 // a point `back` meters goal-side of the ball (toward own goal)
@@ -601,13 +702,49 @@ function ballGoalSide(b, og, back) {
   return { x: b.x + dir.x * back, y: clamp(b.y + dir.y * back, 4, PITCH.WIDTH - 4) };
 }
 
+// Tactical anchor for a player given the phase. This is where shape MORPHING and
+// the §3 settings (line height, mentality push, width, focus, inverted FB) live.
+function phaseHome(p, world, inPoss) {
+  const tn = world.tuning[p.team];
+  const dir = world.attackDir[p.team];
+  const ogX = world.ownGoal(p.team).x;
+  const layer = Math.max(roleLayer(p.role), 0); // 0 def .. 2 fwd
+  const C = PITCH.WIDTH / 2;
+
+  // depth from own goal: defensive block sits at the line; in possession it pushes up
+  const depth = inPoss ? tn.lineBase + tn.attackPush + layer * 16 : tn.lineBase + layer * 10;
+  let x = ogX + dir * depth;
+
+  // width: spread from centre (wider in possession, compact when defending)
+  const spread = inPoss ? tn.widthBias : tn.defWidthBias;
+  let y = C + (p.home.y - C) * spread;
+
+  // inverted full-backs tuck inside and step into midfield in possession
+  if (inPoss && tn.invertedFB && isFullback(p.role)) {
+    y = lerp(y, C, 0.55);
+    x = ogX + dir * (tn.lineBase + tn.attackPush + 6);
+  }
+
+  // attacking focus biases the advanced players toward a flank / the middle
+  if (inPoss && layer >= 1) {
+    if (tn.focus === 'left') y = lerp(y, 7, 0.2);
+    else if (tn.focus === 'right') y = lerp(y, PITCH.WIDTH - 7, 0.2);
+    else if (tn.focus === 'middle') y = lerp(y, C, 0.22);
+  }
+
+  return { x: clamp(x, 2, PITCH.LENGTH - 2), y: clamp(y, 4, PITCH.WIDTH - 4) };
+}
+
+// Tactical anchor + a modest shift toward the ball (compactness / ball-side).
 function shiftedHome(p, world) {
   const b = world.ball;
-  const shiftX = (b.x - PITCH.LENGTH / 2) * SIM.BLOCK_SHIFT_X;
-  const shiftY = (b.y - PITCH.WIDTH / 2) * SIM.BLOCK_SHIFT_Y;
+  const inPoss = b.owner ? b.owner.team === p.team : false;
+  const base = phaseHome(p, world, inPoss);
+  const sx = (b.x - PITCH.LENGTH / 2) * (inPoss ? 0.18 : 0.3);
+  const sy = (b.y - PITCH.WIDTH / 2) * (inPoss ? 0.22 : 0.34);
   return {
-    x: clamp(p.home.x + shiftX, 2, PITCH.LENGTH - 2),
-    y: clamp(p.home.y + shiftY, 4, PITCH.WIDTH - 4),
+    x: clamp(base.x + sx, 2, PITCH.LENGTH - 2),
+    y: clamp(base.y + sy, 4, PITCH.WIDTH - 4),
   };
 }
 
