@@ -114,7 +114,7 @@ export const MATCH = {
 
 // stamina: drains with distance covered, lowering top speed late in the game
 export const STAMINA = {
-  DRAIN_PER_M: 0.0030,   // stamina lost per metre run
+  DRAIN_PER_M: 0.0022,    // stamina lost per metre run
   MIN_SPEED_FACTOR: 0.74, // top-speed multiplier at 0 stamina
   BENCH_SIZE: 7,
   MAX_SUBS: 5,
@@ -126,4 +126,7 @@ export const RESTART_PAUSE = {
   goalkick: 0.7,
   throwin: 0.55,
   corner: 0.8,
+  freekick: 0.7,
 };
+
+export const FOUL_RATE = 0.05; // share of won tackles that are fouls

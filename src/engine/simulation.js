@@ -14,11 +14,12 @@
 // ===========================================================================
 
 import {
-  PITCH, PLAYER, BALL, SIM, DECISION, PASS, SHOT, GK, MATCH, STAMINA,
+  PITCH, PLAYER, BALL, SIM, DECISION, PASS, SHOT, GK, MATCH, STAMINA, FOUL_RATE,
   FIXED_DT, HALF_SECONDS, TEAM,
 } from './constants.js';
 import { dist, dist2, norm, clamp, lerp, approach } from './vec.js';
 import { roleLayer, isFullback } from '../tactics/tactics.js';
+import { xgModel, xtValue, heatIndex, makeGrid } from '../analytics/analytics.js';
 
 // ---------------------------------------------------------------------------
 // Public entry point
@@ -128,12 +129,29 @@ function updateDeadball(world, rng, dt) {
 function updatePlay(world, rng, dt) {
   const b = world.ball;
   if (b.owner) {
-    world.stats[b.owner.team].possTicks++;
+    const team = b.owner.team;
+    world.stats[team].possTicks++;
+    // expected threat added: positive jumps in danger while in possession
+    const xt = xtValue(b.x, b.y, world.attackingGoal(team).x);
+    if (xt > world._lastXt[team]) world.xt[team] += xt - world._lastXt[team];
+    world._lastXt[team] = xt;
     carrierLogic(world, rng, dt);
   } else {
     flightLogic(world, rng, dt);
   }
   if (world.phase === 'play') moveAll(world, dt);
+  if (world.tick % 6 === 0) sampleHeat(world);
+}
+
+function sampleHeat(world) {
+  // normalise to a constant attacking direction so the half-time end-swap
+  // doesn't average every player's heat toward the centre
+  for (const p of world.players) {
+    let g = world.heat[p.id];
+    if (!g) g = world.heat[p.id] = makeGrid();
+    const nx = world.attackDir[p.team] > 0 ? p.x : PITCH.LENGTH - p.x;
+    g[heatIndex(nx, p.y)] += 1;
+  }
 }
 
 // --- the player on the ball -------------------------------------------------
@@ -158,8 +176,14 @@ function carrierLogic(world, rng, dt) {
   if (opp) {
     const tk = SIM.STEAL_CHANCE_PER_TICK * (0.6 + opp.attr.tackling / 100) * (1.2 - c.attr.dribbling / 200);
     if (rng.chance(tk)) {
-      world.stats[opp.team].tackles++;
-      giveBall(world, opp, rng);
+      if (rng.chance(FOUL_RATE)) {
+        // a foul — free kick to the carrier's team, no possession change
+        world.stats[opp.team].fouls++;
+        world.setRestart('freekick', c.team, b.x, b.y);
+      } else {
+        world.stats[opp.team].tackles++;
+        giveBall(world, opp, rng);
+      }
       return;
     }
   }
@@ -367,10 +391,30 @@ function executeShot(c, world, rng) {
   world.lastTouchTeam = c.team;
   const onTarget = predictOnTarget(world, c.team);
   b.shotOnTarget = onTarget;
+  // xG: distance, angle, bodies in the cone, keeper proximity
+  const defenders = defendersInCone(c, world);
+  const gkClose = dist(world.goalkeeperOf(world.other(c.team)), goal) < 7;
+  const xg = xgModel({ distance: dGoal, angleFactor: goalAngleFactor(c, goal), defenders, gkClose });
   world.stats[c.team].shots++;
+  world.stats[c.team].xg += xg;
   if (onTarget) world.stats[c.team].shotsOnTarget++;
-  world.events.push({ type: 'shot', team: c.team, t: world.clock, onTarget });
+  const shot = { team: c.team, x: c.x, y: c.y, dir: world.attackDir[c.team], xg, onTarget, outcome: 'off', t: world.clock };
+  world.shotLog.push(shot);
+  b._shotEvent = shot; // updated to 'goal' / 'saved' / 'blocked' on resolution
+  world.events.push({ type: 'shot', team: c.team, t: world.clock, onTarget, xg });
+  world.timeline.push({ t: world.clock, h: world.stats.home.xg, a: world.stats.away.xg });
   releaseCarry(world, c);
+}
+
+// opponents standing between the shooter and the goal (inside a narrow cone)
+function defendersInCone(c, world) {
+  const goal = world.attackingGoal(c.team);
+  let n = 0;
+  for (const o of world.opponentsOf(c.team)) {
+    if (o.isGK) continue;
+    if (pointSegDist(o, c, goal) < 3.5 && dist(o, goal) < dist(c, goal)) n++;
+  }
+  return n;
 }
 
 function executeThroughBall(c, target, world, rng) {
@@ -423,7 +467,12 @@ function giveBall(world, p, rng) {
   if (b.owner && b.owner !== p) b.owner.hasBall = false; // clear the dispossessed carrier
   if (b.isPass && b.lastKicker && b.lastKicker.team === p.team && b.lastKicker !== p) {
     world.stats[p.team].passesCompleted++;
+    const k = `${b.lastKicker.id}|${p.id}`;
+    world.passNet[p.team][k] = (world.passNet[p.team][k] || 0) + 1; // pass-network link
   }
+  // a live shot collected by an outfielder (not a keeper save) = a block
+  if (b.isShot && b._shotEvent && b._shotEvent.outcome === 'off') b._shotEvent.outcome = 'blocked';
+  b._shotEvent = null;
   // winning the ball off the opponent opens a counter-attack window
   if (b.lastKicker && b.lastKicker.team !== p.team && world.tuning[p.team].counter) {
     world.counterUntil[p.team] = world.clock + 3;
@@ -439,6 +488,7 @@ function giveBall(world, p, rng) {
   b.selfLock = 0;
   b.flightLock = 0;
   world.lastTouchTeam = p.team;
+  world._lastXt[p.team] = xtValue(b.x, b.y, world.attackingGoal(p.team).x);
 }
 
 // ---------------------------------------------------------------------------
@@ -501,6 +551,7 @@ function attemptControl(world, rng) {
   if (!best) return;
 
   if (bestIsSave) {
+    if (b._shotEvent) b._shotEvent.outcome = 'saved';
     if (rng.chance(GK.CATCH_CHANCE)) {
       giveBall(world, best, rng); // caught
       world.events.push({ type: 'save', team: best.team, t: world.clock, caught: true });
@@ -531,6 +582,7 @@ function scoreGoal(world, goalX) {
   const b = world.ball;
   const via = b.isShot ? 'shot' : b.isPass ? 'pass' : b.lastKicker ? 'loose' : 'none';
   const ownGoal = b.lastKicker && b.lastKicker.team === conceding;
+  if (b._shotEvent) b._shotEvent.outcome = 'goal';
   world.score[scoring]++;
   world.events.push({ type: 'goal', team: scoring, t: world.clock, half: world.half, via, ownGoal });
   world.goalFlashUntil = world.clock + MATCH.GOAL_FLASH;
@@ -544,6 +596,7 @@ function goalLineOut(world, goalX) {
   const lt = world.lastTouchTeam;
   if (lt === defending) {
     // defender put it out → corner to the attackers
+    world.stats[attacking].corners++;
     const cx = goalX === 0 ? 1 : PITCH.LENGTH - 1;
     const cy = world.ball.y < PITCH.WIDTH / 2 ? 1 : PITCH.WIDTH - 1;
     world.setRestart('corner', attacking, cx, cy);

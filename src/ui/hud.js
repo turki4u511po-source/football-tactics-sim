@@ -4,6 +4,7 @@
 
 import { TEAM_COLORS, MATCH_SECONDS } from '../engine/constants.js';
 import { t } from './i18n.js';
+import { poss } from '../analytics/analytics.js';
 
 export class Hud {
   constructor(el) {
@@ -20,7 +21,8 @@ export class Hud {
       </div>
       <div class="hud-team away">
         <span class="name" data-away-name></span><span class="dot"></span>
-      </div>`;
+      </div>
+      <div class="hud-stats" data-stats></div>`;
 
     this.$ = (sel) => this.el.querySelector(sel);
     this.$('.hud-team.home .dot').style.background = TEAM_COLORS.home.fill;
@@ -40,8 +42,14 @@ export class Hud {
     const clamped = Math.min(world.clock, MATCH_SECONDS);
     this.$('[data-clock]').textContent = formatClock(clamped);
 
-    const phaseKey = world.phase === 'kickoff' ? 'kickoff' : 'inPlay';
+    const phaseKey =
+      world.phase === 'fulltime' ? 'fulltimeLbl' : world.phase === 'halftime' ? 'halftimeLbl' : world.phase === 'deadball' ? 'kickoff' : 'inPlay';
     this.$('[data-phase]').textContent = t(phaseKey, this.lang);
+
+    // compact live stat bar: possession, shots, xG
+    const ph = poss(world, 'home');
+    this.$('[data-stats]').textContent =
+      `${t('possession', this.lang)} ${ph}–${100 - ph}%  ·  ${t('st_shots', this.lang)} ${world.stats.home.shots}–${world.stats.away.shots}  ·  xG ${world.stats.home.xg.toFixed(1)}–${world.stats.away.xg.toFixed(1)}`;
   }
 }
 

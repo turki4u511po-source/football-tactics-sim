@@ -36,7 +36,7 @@ function placeTeam(team, formationName, attackDir) {
 }
 
 function emptyStats() {
-  return { shots: 0, shotsOnTarget: 0, passes: 0, passesCompleted: 0, tackles: 0, interceptions: 0, possTicks: 0 };
+  return { shots: 0, shotsOnTarget: 0, xg: 0, passes: 0, passesCompleted: 0, tackles: 0, interceptions: 0, fouls: 0, corners: 0, possTicks: 0 };
 }
 
 // Bench players for a team (generic roles, off the pitch until subbed on).
@@ -94,6 +94,14 @@ export class World {
     this.score = { home: 0, away: 0 };
     this.stats = { home: emptyStats(), away: emptyStats() };
     this.events = [];          // light event log (goals, etc.) for later analytics
+
+    // analytics (Phase 5)
+    this.shotLog = [];         // { team, x, y, xg, onTarget, outcome, t }
+    this.passNet = { home: {}, away: {} }; // "fromId|toId" -> count
+    this.heat = {};            // playerId -> Float32Array position grid
+    this.timeline = [{ t: 0, h: 0, a: 0 }]; // cumulative xG over time (momentum)
+    this.xt = { home: 0, away: 0 };          // expected-threat added
+    this._lastXt = { home: 0, away: 0 };
 
     this.firstKickoff = TEAM.HOME;
     this.lastTouchTeam = null;

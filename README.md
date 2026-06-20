@@ -29,6 +29,12 @@ bilingual English tactical terms.
 > couple of sim seconds), **substitutions** with a **stamina** model (fitness drains
 > and lowers pace late; subs come on fresh), **man-marking** assignments, plus
 > pause / 1× / 2× / 4× and **step-through**.
+>
+> **Phase 5 — Analytics:** live stat bar + a full **analytics / post-match screen**:
+> possession, shots, **xG** (transparent model), **xT**, passes & accuracy, tackles,
+> interceptions, corners, fouls, **PPDA**, a **shot map** (size = xG), team
+> **heatmaps**, **pass network**, a **momentum** (cumulative-xG) graph, plain-language
+> **insights** (Arabic/English), and **JSON / PNG export**. Auto-opens at full time.
 
 ---
 
