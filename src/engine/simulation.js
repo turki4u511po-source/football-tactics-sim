@@ -15,7 +15,7 @@
 
 import {
   PITCH, PLAYER, BALL, SIM, DECISION, PASS, SHOT, GK, MATCH, STAMINA, FOUL_RATE,
-  FIXED_DT, HALF_SECONDS, TEAM,
+  FIXED_DT, HALF_SECONDS, TEAM, CLOCK_RATE, DEADBALL_CLOCK_MULT,
 } from './constants.js';
 import { dist, dist2, norm, clamp, lerp, approach } from './vec.js';
 import { roleLayer, isFullback } from '../tactics/tactics.js';
@@ -37,6 +37,7 @@ export function step(world, rng, dt = FIXED_DT) {
 
   if (world.phase === 'halftime') {
     updateHalftime(world, rng, dt);
+    world.playTime += dt;
     world.tick += 1;
     return;
   }
@@ -46,7 +47,11 @@ export function step(world, rng, dt = FIXED_DT) {
 
   updateAI(world); // adaptive opponent (no-op until its next evaluation)
 
-  world.clock += dt;
+  // movement time advances naturally; the match clock is decoupled — it runs
+  // faster during play and even faster during restarts (dead time is skipped)
+  world.playTime += dt;
+  const clockMul = world.phase === 'deadball' ? CLOCK_RATE * DEADBALL_CLOCK_MULT : CLOCK_RATE;
+  world.clock += dt * clockMul;
   world.tick += 1;
   checkClock(world);
 }
@@ -497,9 +502,9 @@ function giveBall(world, p, rng) {
   // a live shot collected by an outfielder (not a keeper save) = a block
   if (b.isShot && b._shotEvent && b._shotEvent.outcome === 'off') b._shotEvent.outcome = 'blocked';
   b._shotEvent = null;
-  // winning the ball off the opponent opens a counter-attack window
+  // winning the ball off the opponent opens a counter-attack window (movement time)
   if (b.lastKicker && b.lastKicker.team !== p.team && world.tuning[p.team].counter) {
-    world.counterUntil[p.team] = world.clock + 3;
+    world.counterUntil[p.team] = world.playTime + 3;
   }
   b.owner = p;
   p.hasBall = true;
@@ -609,7 +614,7 @@ function scoreGoal(world, goalX) {
   if (b._shotEvent) b._shotEvent.outcome = 'goal';
   world.score[scoring]++;
   world.events.push({ type: 'goal', team: scoring, t: world.clock, half: world.half, via, ownGoal });
-  world.goalFlashUntil = world.clock + MATCH.GOAL_FLASH;
+  world.goalFlashUntil = world.playTime + MATCH.GOAL_FLASH;
   world.goalFlashTeam = scoring;
   aiReactSoon(world); // the AI re-thinks shortly after a goal
   world.startKickoff(conceding);
@@ -751,7 +756,7 @@ function decideTarget(p, world, order, marks) {
     // closest pushes ahead to support; further on a counter-attack
     if (rank === 0) {
       const dir = norm({ x: goal.x - b.x, y: goal.y - b.y });
-      const reach = world.counterUntil[p.team] > world.clock ? 20 : 12;
+      const reach = world.counterUntil[p.team] > world.playTime ? 20 : 12;
       return { x: b.x + dir.x * reach, y: clamp(b.y + dir.y * reach, 6, PITCH.WIDTH - 6) };
     }
     // forwards make penetrating runs (toward goal, into channels) when advanced
@@ -771,7 +776,7 @@ function decideTarget(p, world, order, marks) {
       const toMid = norm({ x: PITCH.LENGTH / 2 - o.x, y: PITCH.WIDTH / 2 - o.y });
       return { x: o.x + toMid.x * 15, y: clamp(o.y + toMid.y * 15, 6, PITCH.WIDTH - 6) };
     }
-    if (engage) return { x: b.x, y: b.y };
+    if (engage) return { x: b.x, y: b.y }; // close down the carrier
     return shiftedHome(p, world); // low/mid block: hold the line, don't chase high
   }
 

@@ -27,9 +27,11 @@ const ROWS = [
 ];
 
 export class AnalyticsView {
-  constructor(el, { getWorld }) {
+  constructor(el, { getWorld, onRematch, onMenu }) {
     this.el = el;
     this.getWorld = getWorld;
+    this.onRematch = onRematch || (() => {});
+    this.onMenu = onMenu || (() => {});
     this.lang = 'ar';
     this.open = false;
     this.viewTeam = 'home';
@@ -50,6 +52,8 @@ export class AnalyticsView {
   _onClick(e) {
     const act = e.target.dataset.act;
     if (act === 'a-close') this.toggle(false);
+    else if (act === 'a-rematch') this.onRematch();
+    else if (act === 'a-menu') this.onMenu();
     else if (act === 'a-team') {
       this.viewTeam = this.viewTeam === 'home' ? 'away' : 'home';
       this.render();
@@ -86,6 +90,8 @@ export class AnalyticsView {
           <span style="color:${TEAM_COLORS.away.fill}">${teamName('away')}</span>
           ${phaseDone ? '· ' + t('fulltimeLbl', this.lang) : ''}</h2>
         <div class="a-actions">
+          ${phaseDone ? `<button class="btn primary" data-act="a-rematch">${L('rematch')}</button>
+          <button class="btn" data-act="a-menu">${L('mainMenu')}</button>` : ''}
           <button class="btn" data-act="a-json">${L('exportJson')}</button>
           <button class="btn" data-act="a-png">${L('exportPng')}</button>
           <button class="btn ghost" data-act="a-close">${L('close')}</button>

@@ -22,10 +22,15 @@ export const PITCH = {
 // --- Timing ---------------------------------------------------------------
 export const TICK_RATE = 30;                                  // logic ticks / in-game second
 export const FIXED_DT = 1 / TICK_RATE;                        // in-game seconds per tick
-export const MATCH_SECONDS = 90 * 60;                         // 5400 in-game seconds (full match)
-export const REAL_MATCH_SECONDS = 5 * 60;                     // 300 real seconds at 1x
-export const TIME_SCALE = MATCH_SECONDS / REAL_MATCH_SECONDS; // 18 in-game s per real s @ 1x
+export const MATCH_SECONDS = 90 * 60;                         // 5400 in-game clock seconds (full match)
 export const HALF_SECONDS = MATCH_SECONDS / 2;
+
+// Movement is DECOUPLED from the match clock. At 1x the physics runs at a
+// NATURAL pace (a sprint looks like a real sprint); the match CLOCK advances
+// faster — and skips dead time — to compress 90 minutes into a watchable match.
+export const MOVE_SCALE = 1.4;        // in-game MOVEMENT seconds per real second @1x (natural feel)
+export const CLOCK_RATE = 2.8;        // match-clock seconds per movement second during live play
+export const DEADBALL_CLOCK_MULT = 4; // clock advances faster during restarts (skip dead time)
 
 export const SPEEDS = [1, 2, 4];
 

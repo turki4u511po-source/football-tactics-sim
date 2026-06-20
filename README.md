@@ -9,7 +9,9 @@ heatmaps, shot maps).
 deployable as a **static site to GitHub Pages**. UI is **Arabic-first (RTL)** with
 bilingual English tactical terms.
 
-> Built **phase by phase** per the build spec. **Current status: all 8 phases complete.**
+> Built **phase by phase** per the build spec. **Current status: all 8 phases complete**,
+> plus a FIFA-like flow: **main menu → pre-match planning → natural-paced match →
+> post-match analysis** (with live tactics, substitutions, analytics, what-if lab and a season).
 >
 > **Phase 2 — Football basics:** on-ball decisions (pass / dribble / shoot / clear),
 > zonal marking, interceptions & tackles, shots with keeper saves, **goals**, proper
@@ -137,10 +139,12 @@ index.html · styles.css
 1. **Engine decoupled from rendering.** `/engine` imports nothing from the DOM or
    Canvas. The render loop only *reads* state. (The headless `npm test` runs the
    entire engine in Node with no browser — that's the proof.)
-2. **Fixed-timestep logic, interpolated rendering.** Logic ticks at a fixed 30 Hz
-   of in-game time; rendering runs on `requestAnimationFrame` and interpolates
-   between ticks, so motion is smooth at any framerate or playback speed. One
-   match = **90 in-game minutes compressed into ~5 real minutes** (18× at 1×).
+2. **Fixed-timestep logic, interpolated rendering, NATURAL movement.** Logic ticks
+   at a fixed 30 Hz; rendering interpolates between ticks for smooth motion. The
+   **match clock is decoupled from movement**: at 1× players move at a natural,
+   FIFA-like pace (a sprint looks like a real sprint), while the match clock runs
+   fast and **skips dead time** to compress 90 minutes into a watchable match
+   (~20 min at 1×, ~5 min at 4×). 2×/4× fast-forward everything.
 3. **Determinism.** Every random decision flows through a seeded PRNG. Same seed
    ⇒ identical match — the basis for replays and "what-if" A/B testing later.
 

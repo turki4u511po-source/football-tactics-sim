@@ -112,7 +112,8 @@ export class World {
 
     this.ball = new Ball(PITCH.LENGTH / 2, PITCH.WIDTH / 2);
 
-    this.clock = 0;            // in-game seconds elapsed
+    this.clock = 0;            // match-clock seconds (decoupled, runs fast)
+    this.playTime = 0;         // movement seconds elapsed (natural pace)
     this.tick = 0;
     this.half = 1;
     this.injury = null;        // current half's stoppage time (computed by sim on tick 0)

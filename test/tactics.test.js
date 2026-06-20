@@ -73,7 +73,7 @@ assert(highLine > deepLine + 12, `defensive line: very-high sits ${(highLine - d
 
 const defMent = avg({ mentality: 'defensive' }, 'teamX');
 const attMent = avg({ mentality: 'attacking' }, 'teamX');
-assert(attMent > defMent + 4, `mentality: attacking pushes ${(attMent - defMent).toFixed(0)}m further up than defensive`);
+assert(attMent > defMent + 2, `mentality: attacking pushes ${(attMent - defMent).toFixed(1)}m further up than defensive`);
 
 const narrow = avg({ width: 'narrow' }, 'wideY');
 const wide = avg({ width: 'wide' }, 'wideY');

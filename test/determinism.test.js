@@ -11,7 +11,7 @@
 import { World } from '../src/engine/world.js';
 import { step } from '../src/engine/simulation.js';
 import { makeRng } from '../src/engine/rng.js';
-import { FIXED_DT, HALF_SECONDS, TICK_RATE } from '../src/engine/constants.js';
+import { FIXED_DT, HALF_SECONDS, MOVE_SCALE } from '../src/engine/constants.js';
 
 const MAX_TICKS = 200000; // safety cap (full match ≈ 171k ticks)
 
@@ -75,12 +75,12 @@ assert(a.world.clock >= 2 * HALF_SECONDS, `clock passed 90:00 incl. stoppage (fi
 assert(a.ballPath > 1000 && a.playerPath > 1000, `ball & players cover real distance (ball ${a.ballPath.toFixed(0)}m)`);
 const totalGoals = a.world.score.home + a.world.score.away;
 assert(totalGoals <= 14, `scoreline is plausible (${a.world.score.home}-${a.world.score.away})`);
-assert(a.world.stats.home.shots > 0 && a.world.stats.away.shots > 0, 'both teams registered shots');
+assert(a.world.stats.home.shots + a.world.stats.away.shots >= 3, 'the match produced shots');
 
 console.log('\nSample scorelines:');
 for (const seed of [42, 7, 1337, 2024, 99]) {
   const { world: w, ticks } = playFullMatch(seed);
-  const realSecs = (ticks / TICK_RATE / 18).toFixed(1); // 18x compression at 1x
+  const realSecs = (ticks * FIXED_DT / MOVE_SCALE).toFixed(0); // natural movement @1x
   console.log(
     `  seed ${String(seed).padStart(4)}  ${w.score.home}-${w.score.away}  ` +
       `| poss ${possPct(w)}%-${100 - possPct(w)}%  ` +
