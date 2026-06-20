@@ -4,7 +4,7 @@
 // (that lives in simulation.js) and no DOM.
 // ===========================================================================
 
-import { PITCH, TEAM, RESTART_PAUSE } from './constants.js';
+import { PITCH, TEAM, RESTART_PAUSE, STAMINA } from './constants.js';
 import { Player, Ball } from './entities.js';
 import { FORMATIONS, DEFAULT_FORMATION } from './formations.js';
 import { lerp, dist2 } from './vec.js';
@@ -39,6 +39,26 @@ function emptyStats() {
   return { shots: 0, shotsOnTarget: 0, passes: 0, passesCompleted: 0, tackles: 0, interceptions: 0, possTicks: 0 };
 }
 
+// Bench players for a team (generic roles, off the pitch until subbed on).
+const BENCH_ROLES = ['CB', 'FB', 'CM', 'CM', 'AM', 'W', 'ST'];
+function makeBench(team) {
+  const bench = [];
+  for (let i = 0; i < STAMINA.BENCH_SIZE; i++) {
+    const p = new Player({
+      id: `${team}-sub${i + 1}`,
+      team,
+      number: 12 + i,
+      role: BENCH_ROLES[i] || 'CM',
+      x: PITCH.LENGTH / 2,
+      y: -10,
+      isGK: false,
+    });
+    p.onPitch = false;
+    bench.push(p);
+  }
+  return bench;
+}
+
 export class World {
   constructor({ seed = 1, homeTactics, awayTactics, homeFormation, awayFormation } = {}) {
     this.seed = seed;
@@ -57,6 +77,12 @@ export class World {
     this.home = placeTeam(TEAM.HOME, this.homeFormation, this.attackDir.home);
     this.away = placeTeam(TEAM.AWAY, this.awayFormation, this.attackDir.away);
     this.players = [...this.home, ...this.away];
+
+    // substitutes (off the pitch until brought on)
+    this.bench = { home: makeBench(TEAM.HOME), away: makeBench(TEAM.AWAY) };
+    this.subsUsed = { home: 0, away: 0 };
+    this.manMarks = {}; // markerPlayerId -> targetPlayerId (man-marking assignments)
+    this._index();
 
     this.ball = new Ball(PITCH.LENGTH / 2, PITCH.WIDTH / 2);
 
@@ -172,6 +198,52 @@ export class World {
 
   startKickoff(team) {
     this.setRestart('kickoff', team, PITCH.LENGTH / 2, PITCH.WIDTH / 2);
+  }
+
+  _index() {
+    this._byId = new Map();
+    for (const p of [...this.players, ...this.bench.home, ...this.bench.away]) this._byId.set(p.id, p);
+  }
+  playerById(id) {
+    return this._byId ? this._byId.get(id) : null;
+  }
+
+  // Bring `inId` (bench) on for `outId` (pitch) on the same team. The sub
+  // inherits the position/role/anchor and comes on fresh.
+  substitute(team, outId, inId) {
+    if (this.subsUsed[team] >= STAMINA.MAX_SUBS) return false;
+    const arr = this.teamPlayers(team);
+    const out = arr.find((p) => p.id === outId);
+    const inc = this.bench[team].find((p) => p.id === inId);
+    if (!out || !inc) return false;
+
+    inc.home = { x: out.home.x, y: out.home.y };
+    inc.x = out.x; inc.y = out.y; inc.px = out.x; inc.py = out.y;
+    inc.vx = inc.vy = 0;
+    inc.role = out.role;
+    inc.isGK = out.isGK;
+    inc.onPitch = true;
+    inc.currentStamina = 100;
+    inc.hasBall = false;
+
+    const i = arr.indexOf(out);
+    arr[i] = inc;
+    out.onPitch = false;
+    out.hasBall = false;
+    const bi = this.bench[team].indexOf(inc);
+    this.bench[team][bi] = out;
+
+    if (this.ball.owner === out) this.ball.owner = inc;
+    this.players = [...this.home, ...this.away];
+    this.subsUsed[team]++;
+    this._index();
+    return true;
+  }
+
+  // Man-marking: marker (a player on `team`) shadows a specific opponent.
+  setManMark(markerId, targetId) {
+    if (targetId) this.manMarks[markerId] = targetId;
+    else delete this.manMarks[markerId];
   }
 
   // Apply tactical changes (pre-match or live). Re-derives tuning; if the

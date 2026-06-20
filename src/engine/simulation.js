@@ -14,7 +14,7 @@
 // ===========================================================================
 
 import {
-  PITCH, PLAYER, BALL, SIM, DECISION, PASS, SHOT, GK, MATCH,
+  PITCH, PLAYER, BALL, SIM, DECISION, PASS, SHOT, GK, MATCH, STAMINA,
   FIXED_DT, HALF_SECONDS, TEAM,
 } from './constants.js';
 import { dist, dist2, norm, clamp, lerp, approach } from './vec.js';
@@ -597,9 +597,11 @@ function moveAll(world, dt) {
   for (const p of world.players) {
     const target = decideTarget(p, world, order, marks);
     let maxSpeed = p.isGK ? PLAYER.GK_SPEED : PLAYER.BASE_SPEED;
-    if (p.hasBall) maxSpeed *= PLAYER.DRIBBLE_FACTOR; // dribbling is slower than running
+    maxSpeed *= STAMINA.MIN_SPEED_FACTOR + (1 - STAMINA.MIN_SPEED_FACTOR) * (p.currentStamina / 100);
+    if (b.owner === p) maxSpeed *= PLAYER.DRIBBLE_FACTOR; // dribbling is slower than running
     if (p.isGK && b.isShot && headingTowardOwnGoal(world, p)) maxSpeed *= GK.REACH_SPEED_BONUS;
     steerTo(p, target, dt, maxSpeed);
+    p.currentStamina = Math.max(0, p.currentStamina - STAMINA.DRAIN_PER_M * Math.hypot(p.vx, p.vy) * dt);
   }
 }
 
@@ -618,11 +620,20 @@ function assignMarks(world, team, order, marks) {
   const defs = world.teamPlayers(team).filter((p) => !p.isGK);
   defs.sort((a, c) => (order.get(a) ?? 99) - (order.get(c) ?? 99));
   const taken = new Set();
+  // man-marked targets are reserved (handled directly in decideTarget)
+  for (const mid in world.manMarks) {
+    const m = world.playerById(mid);
+    if (m && m.team === team) {
+      const t = world.playerById(world.manMarks[mid]);
+      if (t) taken.add(t);
+    }
+  }
   // skip the presser (rank 0) and leave the most advanced 1-2 free (rest/counter)
   // so the attacking side can still find a spare man — keeps chances flowing
   const limit = Math.min(defs.length, 6);
   for (let i = 1; i < limit; i++) {
     const d = defs[i];
+    if (world.manMarks[d.id]) continue; // man-marker: handled separately
     let best = null;
     let bd = Infinity;
     for (const o of world.opponentsOf(team)) {
@@ -649,6 +660,12 @@ function decideTarget(p, world, order, marks) {
   const myTeamHasBall = b.owner && b.owner.team === p.team;
 
   const tn = world.tuning[p.team];
+
+  // man-marking: shadow the assigned opponent (defensive duty) over zonal shape
+  if (!myTeamHasBall && world.manMarks[p.id]) {
+    const tgt = world.playerById(world.manMarks[p.id]);
+    if (tgt && tgt.onPitch) return markTarget(tgt, world, p.team);
+  }
 
   if (myTeamHasBall) {
     const goal = world.attackingGoal(p.team);

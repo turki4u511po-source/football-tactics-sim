@@ -30,6 +30,9 @@ export class Player {
     this.carryTime = 0;      // total time carrying this possession
     this.nextDecision = 1.0; // when they'll next decide (seconds)
 
+    this.onPitch = true;     // false while on the bench
+    this.currentStamina = 100; // drains over the match; lowers pace + sharpness late
+
     // attributes (0–100); Phase 2 uses passing/shooting/dribbling/tackling/positioning
     this.attr = {
       pace: 72,

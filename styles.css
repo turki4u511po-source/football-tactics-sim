@@ -129,6 +129,53 @@ body {
 .btn.ghost { background: transparent; }
 .btn.speed { padding: 6px 10px; min-width: 38px; }
 .btn.speed.active { background: var(--accent); border-color: var(--accent); }
+.btn.accent { background: #6b46c1; border-color: #6b46c1; }
+.btn.accent:hover { background: #7d56d6; }
+.btn.wide { width: 100%; margin-top: 8px; }
+.btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+
+/* --- live tactics / management panel --- */
+.panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: 360px;
+  max-width: 92vw;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  box-shadow: -8px 0 30px rgba(0, 0, 0, 0.5);
+  transform: translateX(100%);
+  transition: transform 0.22s ease;
+  overflow-y: auto;
+  z-index: 50;
+  padding: 14px 16px 40px;
+  pointer-events: none; /* never block the pitch/controls while closed */
+}
+.panel.open { transform: translateX(0); pointer-events: auto; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.panel-head h2 { font-size: 16px; margin: 0; }
+.panel section { border-top: 1px solid var(--line); padding: 12px 0; }
+.panel h3 { font-size: 13px; color: var(--accent-2); margin: 0 0 10px; }
+.panel h3 small { color: var(--muted); font-weight: 400; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.prow { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--muted); }
+.prow.small { font-size: 10px; }
+.prow select {
+  background: #0b1722; color: var(--text); border: 1px solid var(--line);
+  border-radius: 7px; padding: 5px 6px; font-size: 12px;
+}
+.subcols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.collab { font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+.pp {
+  display: flex; align-items: center; gap: 6px; padding: 5px 7px; margin-bottom: 4px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px;
+  cursor: pointer; font-size: 12px;
+}
+.pp.sel { border-color: var(--accent); background: #1b3550; }
+.pp .role { color: var(--muted); font-size: 10px; }
+.pp .stam { flex: 1; height: 5px; background: #0b1722; border-radius: 3px; overflow: hidden; margin-inline-start: auto; }
+.pp .stamfill { display: block; height: 100%; }
 
 .seed {
   width: 78px;

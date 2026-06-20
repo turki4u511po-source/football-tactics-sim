@@ -112,6 +112,14 @@ export const MATCH = {
   GOAL_FLASH: 2.4,               // in-game seconds the GOAL banner shows
 };
 
+// stamina: drains with distance covered, lowering top speed late in the game
+export const STAMINA = {
+  DRAIN_PER_M: 0.0030,   // stamina lost per metre run
+  MIN_SPEED_FACTOR: 0.74, // top-speed multiplier at 0 stamina
+  BENCH_SIZE: 7,
+  MAX_SUBS: 5,
+};
+
 // dead-ball restart hold times (in-game seconds before play resumes)
 export const RESTART_PAUSE = {
   kickoff: 0.9,

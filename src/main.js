@@ -12,6 +12,7 @@ import { TIME_SCALE } from './engine/constants.js';
 import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
 import { Controls } from './ui/controls.js';
+import { Panel } from './ui/panel.js';
 import { t } from './ui/i18n.js';
 
 const state = { lang: 'ar', speed: 1, paused: false, seed: 42 };
@@ -39,16 +40,23 @@ function normalizeSeed(v) {
 const canvas = document.getElementById('pitch');
 const renderer = new Renderer(canvas);
 const hud = new Hud(document.getElementById('hud'));
+const panel = new Panel(document.getElementById('panel'), { getWorld: () => world });
 const controls = new Controls(document.getElementById('controls'), {
   onPlayToggle: () => {
     state.paused = !state.paused;
     controls.setPlaying(!state.paused);
   },
-  onRestart: () => buildMatch(controls.getSeed()),
+  onStep: () => stepper.advance(0.5), // advance ~0.5s of in-game time while paused
+  onTactics: () => panel.toggle(),
+  onRestart: () => {
+    buildMatch(controls.getSeed());
+    if (panel.open) panel.refresh();
+  },
   onSeed: (v) => {
     buildMatch(v);
     state.paused = false;
     controls.setPlaying(true);
+    if (panel.open) panel.refresh();
   },
   onSpeed: (n) => {
     state.speed = n;
@@ -67,6 +75,7 @@ function setLang(lang) {
   renderer.options.lang = lang;
   controls.setLang(lang);
   hud.setLang(lang);
+  panel.setLang(lang);
   document.querySelectorAll('[data-i18n]').forEach((node) => {
     node.textContent = t(node.dataset.i18n, lang);
   });

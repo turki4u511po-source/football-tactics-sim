@@ -23,6 +23,12 @@ bilingual English tactical terms.
 > **shape morphing** (different in-/out-of-possession positions), pressing triggers
 > by line height, marking, **through-balls & penetrating runs**, and counter-attack
 > transitions. `npm test` proves each setting moves play the expected way.
+>
+> **Phase 4 — Live control & management:** a slide-in **tactics panel** (Arabic RTL,
+> bilingual) to change any instruction or the formation mid-match (effect within a
+> couple of sim seconds), **substitutions** with a **stamina** model (fitness drains
+> and lowers pace late; subs come on fresh), **man-marking** assignments, plus
+> pause / 1× / 2× / 4× and **step-through**.
 
 ---
 

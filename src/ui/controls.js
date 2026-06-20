@@ -19,6 +19,7 @@ export class Controls {
   _build() {
     this.el.innerHTML = `
       <button class="btn primary" data-act="play"></button>
+      <button class="btn" data-act="step"></button>
       <button class="btn" data-act="restart"></button>
       <div class="group" data-group="speed">
         <span class="lbl" data-lbl="speed"></span>
@@ -33,6 +34,7 @@ export class Controls {
         <input type="checkbox" data-act="numbers" checked />
         <span class="lbl" data-lbl="numbers"></span>
       </label>
+      <button class="btn accent" data-act="tactics"></button>
       <button class="btn ghost" data-act="lang"></button>`;
 
     const q = (s) => this.el.querySelector(s);
@@ -40,6 +42,8 @@ export class Controls {
     this.$seed = q('.seed');
 
     this.$play.addEventListener('click', () => this.h.onPlayToggle());
+    q('[data-act="step"]').addEventListener('click', () => this.h.onStep());
+    q('[data-act="tactics"]').addEventListener('click', () => this.h.onTactics());
     q('[data-act="restart"]').addEventListener('click', () => this.h.onRestart());
     q('[data-act="apply"]').addEventListener('click', () => this.h.onSeed(this.$seed.value));
     this.$seed.addEventListener('keydown', (e) => {
@@ -72,6 +76,8 @@ export class Controls {
   setLang(lang) {
     this.lang = lang;
     this.el.querySelector('[data-act="restart"]').textContent = t('restart', lang);
+    this.el.querySelector('[data-act="step"]').textContent = t('step', lang);
+    this.el.querySelector('[data-act="tactics"]').textContent = t('tactics', lang);
     this.el.querySelector('[data-act="apply"]').textContent = t('apply', lang);
     this.el.querySelector('[data-act="lang"]').textContent = t('language', lang);
     this.el.querySelector('[data-lbl="speed"]').textContent = t('speed', lang);

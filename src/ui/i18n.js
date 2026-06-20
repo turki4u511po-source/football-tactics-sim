@@ -19,7 +19,33 @@ export const DICT = {
 
   kickoff: { ar: 'ضربة البداية', en: 'Kickoff' },
   inPlay: { ar: 'الكرة في اللعب', en: 'In play' },
+  halftimeLbl: { ar: 'الاستراحة', en: 'Half-time' },
+  fulltimeLbl: { ar: 'انتهت المباراة', en: 'Full time' },
   possession: { ar: 'الاستحواذ', en: 'Possession' },
+
+  // Phase 4 — live control & management
+  tactics: { ar: 'التكتيك', en: 'Tactics' },
+  close: { ar: 'إغلاق', en: 'Close' },
+  step: { ar: 'خطوة', en: 'Step' },
+  teamShape: { ar: 'الشكل والتعليمات', en: 'Shape & Instructions' },
+  subsTitle: { ar: 'التبديلات', en: 'Substitutions' },
+  manMarkTitle: { ar: 'الرقابة اللصيقة', en: 'Man-marking' },
+  subBtn: { ar: 'تبديل', en: 'Sub' },
+  none: { ar: 'بدون', en: 'None' },
+  stamina: { ar: 'اللياقة', en: 'Fitness' },
+  bench: { ar: 'دكة البدلاء', en: 'Bench' },
+  subsLeft: { ar: 'المتبقي', en: 'left' },
+
+  // setting names (bilingual; option values stay as English tactical terms)
+  s_formation: { ar: 'التشكيل', en: 'Formation' },
+  s_mentality: { ar: 'العقلية', en: 'Mentality' },
+  s_playstyle: { ar: 'أسلوب اللعب', en: 'Play style' },
+  s_pressing: { ar: 'الضغط', en: 'Pressing' },
+  s_line: { ar: 'خط الدفاع', en: 'Defensive line' },
+  s_width: { ar: 'العرض', en: 'Width' },
+  s_tempo: { ar: 'الإيقاع', en: 'Tempo' },
+  s_buildup: { ar: 'البناء', en: 'Build-up' },
+  s_focus: { ar: 'محور الهجوم', en: 'Attacking focus' },
 
   hint: {
     ar: 'انقر «تشغيل». غيّر البذرة وأعد التشغيل بنفس القيمة لتطابق المباراة تمامًا.',
@@ -31,4 +57,10 @@ export function t(key, lang = 'ar') {
   const entry = DICT[key];
   if (!entry) return key;
   return entry[lang] ?? entry.ar;
+}
+
+// Prettify an English tactical option value for display.
+export function optLabel(v) {
+  const map = { veryhigh: 'Very High', gegenpress: 'Gegenpress' };
+  return map[v] || v.charAt(0).toUpperCase() + v.slice(1);
 }
