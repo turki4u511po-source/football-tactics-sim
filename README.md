@@ -9,7 +9,13 @@ heatmaps, shot maps).
 deployable as a **static site to GitHub Pages**. UI is **Arabic-first (RTL)** with
 bilingual English tactical terms.
 
-> Built **phase by phase** per the build spec. **Current status: Phase 1 complete.**
+> Built **phase by phase** per the build spec. **Current status: Phase 2 complete.**
+>
+> **Phase 2 — Football basics:** on-ball decisions (pass / dribble / shoot / clear),
+> zonal marking, interceptions & tackles, shots with keeper saves, **goals**, proper
+> restarts (kickoff / throw-in / corner / goal kick), and full match flow — two 45'
+> halves + stoppage time, half-time end-swap, full time — playing 90 in-game minutes
+> in ~5 real minutes and ending with a believable scoreline.
 
 ---
 

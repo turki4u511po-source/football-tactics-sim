@@ -26,11 +26,22 @@ export class Player {
 
     // ball relationship
     this.hasBall = false;
-    this.holdTime = 0;       // how long this player has carried the ball
-    this.nextRelease = 1.0;  // when they'll pass/drive next (seconds)
+    this.holdTime = 0;       // time since the last decision while carrying
+    this.carryTime = 0;      // total time carrying this possession
+    this.nextDecision = 1.0; // when they'll next decide (seconds)
 
-    // attributes (0–100) — Phase 1 only really uses pace; rest land in Phase 2/3
-    this.attr = { pace: 72, passing: 70, shooting: 68, tackling: 68, positioning: 70 };
+    // attributes (0–100); Phase 2 uses passing/shooting/dribbling/tackling/positioning
+    this.attr = {
+      pace: 72,
+      passing: 70,
+      shooting: 68,
+      dribbling: 70,
+      tackling: 68,
+      positioning: 70,
+      vision: 70,
+      strength: 70,
+      stamina: 90,
+    };
   }
 
   get pos() {
@@ -46,8 +57,12 @@ export class Ball {
     this.vy = 0;
     this.px = x;
     this.py = y;
-    this.owner = null;        // Player instance, or null when loose
-    this.controlCooldown = 0; // while > 0 the ball is "in flight" and uncollectable
+    this.owner = null;       // Player instance, or null when loose
+    this.isShot = false;     // true while a shot is in flight (for saves + stats)
+    this.isPass = false;     // true while a pass is in flight (pass vs interception)
+    this.flightLock = 0;     // seconds after a kick during which NOBODY can collect it
+    this.selfLock = 0;       // seconds the last kicker can't recollect their own ball
+    this.lastKicker = null;  // who last struck the ball (for self-lock + accounting)
   }
 
   get pos() {

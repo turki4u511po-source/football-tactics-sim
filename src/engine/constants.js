@@ -46,9 +46,10 @@ export const PLAYER = {
   BASE_SPEED: 7.4,     // m/s outfield top speed
   GK_SPEED: 5.6,
   ACCEL: 22,           // m/s^2 toward desired velocity
+  DRIBBLE_FACTOR: 0.78,// a player on the ball is slower than one running freely
   SLOW_RADIUS: 2.2,    // start easing when within this of target
   CONTROL_RADIUS: 1.5, // distance to collect a loose ball
-  STEAL_RADIUS: 1.4,   // opponent must be within this to contest the carrier
+  STEAL_RADIUS: 2.0,   // opponent must be within this to contest the carrier
 };
 
 // --- Ball tuning ----------------------------------------------------------
@@ -57,16 +58,64 @@ export const BALL = {
   LINEAR_DAMP: 0.9,    // exp velocity damping per second when loose
   MAX_SPEED: 32,
   WALL_BOUNCE: 0.55,   // touchline reflection energy retained
+  FLIGHT_LOCK: 0.10,  // seconds after a kick during which the ball is uncollectable
 };
 
-// --- Phase-1 behavior knobs ----------------------------------------------
+// --- Off-ball / shape knobs ----------------------------------------------
 export const SIM = {
-  KICKOFF_PAUSE: 0.9,         // in-game seconds the kickoff is held before play
-  STEAL_CHANCE_PER_TICK: 0.05,// per-tick probability an in-range opponent wins the ball
+  STEAL_CHANCE_PER_TICK: 0.08, // per-tick probability an adjacent opponent tackles the carrier
   BLOCK_SHIFT_X: 0.42,        // how far the team shifts toward the ball along x
   BLOCK_SHIFT_Y: 0.40,        // ... and along y
-  HOLD_MIN: 0.7,              // carrier holds the ball this long (min) before releasing
-  HOLD_MAX: 1.7,              // ... and at most this long
-  PASS_MIN_RANGE: 6,          // teammates closer than this aren't pass targets
-  PASS_MAX_RANGE: 34,         // ... nor farther than this
+  PASS_MIN_RANGE: 5,          // teammates closer than this aren't pass targets
+  PASS_MAX_RANGE: 38,         // ... nor farther than this
+};
+
+// --- On-ball decision making (Phase 2) -----------------------------------
+export const DECISION = {
+  MIN: 0.9,                   // seconds between carrier decisions (min)
+  MAX: 2.0,                   // ... and max
+  DRIBBLE_GAP: 0.6,           // quicker re-think while dribbling
+  PRESSURE_RADIUS: 5.0,       // opponents within this count as "pressure"
+  MAX_CARRY: 4.0,             // force a release after carrying this long
+};
+
+export const PASS = {
+  BASE_SPEED: 13,             // m/s, scaled up with distance
+  SELF_LOCK: 0.18,            // seconds the passer can't recollect their own pass
+  SPREAD: 0.10,              // base aim jitter (radians), reduced by passing skill
+};
+
+export const SHOT = {
+  RANGE: 19,                  // only consider shooting within this of goal (m)
+  GOOD_RANGE: 11,             // high-confidence shooting distance
+  SPEED: 27,                  // shot ball speed (m/s)
+  SPREAD: 0.42,             // base aim jitter (radians), worse w/ distance & pressure
+  EAGERNESS: 0.5,         // global damping on how readily players shoot
+};
+
+export const GK = {
+  LINE_OFFSET: 2.2,           // how far off the goal line the keeper sits
+  SAVE_REACH: 4.8,           // a shot within this of the keeper can be saved
+  CATCH_CHANCE: 0.93,         // chance a reachable shot is caught (else parried wide)
+  ANTICIPATE_RANGE: 40,       // start tracking an incoming shot within this
+  REACH_SPEED_BONUS: 2.2,     // keeper moves faster reacting to a live shot
+  TRACK_Y: 3.4,              // max lateral offset from goal centre in open play
+  RUSH_RANGE: 16,             // come off the line to narrow the angle within this
+  RUSH_OUT: 8.0,              // max distance off the line when rushing a 1v1
+};
+
+// --- Match flow ----------------------------------------------------------
+export const MATCH = {
+  INJ1_MIN: 60,  INJ1_MAX: 150,   // first-half stoppage time (seconds)
+  INJ2_MIN: 120, INJ2_MAX: 300,   // second-half stoppage time (seconds)
+  HALFTIME_PAUSE: 4,              // in-game seconds spent at half-time
+  GOAL_FLASH: 2.4,               // in-game seconds the GOAL banner shows
+};
+
+// dead-ball restart hold times (in-game seconds before play resumes)
+export const RESTART_PAUSE = {
+  kickoff: 0.9,
+  goalkick: 0.7,
+  throwin: 0.55,
+  corner: 0.8,
 };
